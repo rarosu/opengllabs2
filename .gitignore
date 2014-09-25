@@ -1,0 +1,5 @@
+build/
+bin/x64/*.exe
+bin/x64/*.ilk
+bin/x86/*.exe
+bin/x86/*.ilk

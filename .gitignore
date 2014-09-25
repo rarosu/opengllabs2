@@ -1,5 +1,13 @@
 build/
+
 bin/x64/*.exe
+bin/x64/*.lib
 bin/x64/*.ilk
+bin/x64/*.idb
+bin/x64/*.pdb
+
 bin/x86/*.exe
+bin/x86/*.lib
 bin/x86/*.ilk
+bin/x86/*.idb
+bin/x86/*.pdb

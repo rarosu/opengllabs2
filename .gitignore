@@ -1,13 +1,13 @@
 build/
 
-bin/x64/*.exe
-bin/x64/*.lib
-bin/x64/*.ilk
-bin/x64/*.idb
-bin/x64/*.pdb
+**.exe
+**.lib
+**.idb
+**.ilk
+**.pdb
 
-bin/x86/*.exe
-bin/x86/*.lib
-bin/x86/*.ilk
-bin/x86/*.idb
-bin/x86/*.pdb
+#bin/[x86|x64]/[release|debug]/*.exe
+#bin/[x86|x64]/[release|debug]/*.lib
+#bin/[x86|x64]/[release|debug]/*.idb
+#bin/[x86|x64]/[release|debug]/*.ilk
+#bin/[x86|x64]/[release|debug]/*.pdb

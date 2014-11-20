@@ -3,27 +3,34 @@ solution "opengllabs"
     platforms { "x32", "x64" }
     location "build"
     
-    configuration "x32"
-        targetdir "bin/x86/"
-        debugdir "bin/x86/"
-        libdirs "external/lib/x86"
-    configuration "x64"
-        targetdir "bin/x64/"
-        debugdir "bin/x64/"
-        libdirs "external/lib/x64"
-    configuration "Debug"
-        flags { "Symbols" }
-    configuration "Release"
-        flags { "Optimize" }
-    configuration {}
+	configuration { "x32", "Debug" }
+		targetdir "bin/x86/debug/"
+        debugdir "bin/x86/debug/"
+        libdirs "external/lib/x86/"
+		flags { "Symbols" }
+	configuration { "x32", "Release" }
+		targetdir "bin/x86/release/"
+        debugdir "bin/x86/release/"
+        libdirs "external/lib/x86/"
+		flags { "Optimize" }
+	configuration { "x64", "Debug" }
+		targetdir "bin/x64/debug/"
+        debugdir "bin/x64/debug/"
+        libdirs "external/lib/x64/"
+		flags { "Symbols" }
+	configuration { "x64", "Release" }
+		targetdir "bin/x64/release/"
+        debugdir "bin/x64/release/"
+        libdirs "external/lib/x64/"
+		flags { "Optimize" }
+	configuration {}
     
     includedirs { "external/include/", "external/include/freetype/", "common/include/" }
-    
     
     project "common"
         kind "StaticLib"
         language "C++"
-        files { "common/**.h", "common/**.cpp" }
+        files { "common/**.h", "common/**.cpp", "assets/shaders/**.vs", "assets/shaders/**.fs" }
         objdir "build/common/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32", "freetype" }
     

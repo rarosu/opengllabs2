@@ -7,13 +7,13 @@ layout(location = 2) in vec2 in_texcoord;
 out vec3 vs_normal;
 out vec2 vs_texcoord;
 
-layout(std140) uniform PerFrame
+layout(binding = 0, std140) uniform PerFrame
 {
 	mat4 viewMatrix;
 	mat4 projectionMatrix;
 };
 
-layout(std140) uniform PerInstance
+layout(binding = 1, std140) uniform PerInstance
 {
 	mat4 modelMatrix;
 	mat4 normalMatrix;

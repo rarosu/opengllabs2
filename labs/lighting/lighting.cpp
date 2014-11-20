@@ -10,13 +10,18 @@
 #include <vector>
 #include <common/text.h>
 #include <common/shader.h>
+#include <common/camera.h>
 
 
 #undef main
 
 const int VIEWPORT_WIDTH = 800;
 const int VIEWPORT_HEIGHT = 600;
-const char* const FONT_FILEPATH = "../../assets/fonts/FreeSans.ttf";
+const char* const FONT_FILEPATH = "../../../assets/fonts/FreeSans.ttf";
+const char* const VS_FILEPATH = "../../../assets/shaders/mesh_textured.vs";
+const char* const FS_FILEPATH = "../../../assets/shaders/mesh_textured.fs";
+const float CAMERA_RADIUS = 50.0f;
+const float CAMERA_ANGULAR_SPEED = (float) M_PI;
 
 FT_Library ft = nullptr;
 FT_Face face = nullptr;
@@ -28,10 +33,10 @@ GLuint vertexCount = 0;
 GLuint vshader = 0;
 GLuint fshader = 0;
 GLuint program = 0;
-GLuint perFrameIndex = 0;
-GLuint perInstanceIndex = 0;
 GLuint perFrameBuffer = 0;
 GLuint perInstanceBuffer = 0;
+Camera camera;
+float cameraAngle;
 
 struct PerFrameUniformBuffer
 {
@@ -59,20 +64,39 @@ int main()
 		InitializeScene();
 
 		
+		Uint32 lastTick = SDL_GetTicks();
+		float dt = 0.0f;
 
 		bool running = true;
 		while (running)
 		{
+			dt = (SDL_GetTicks() - lastTick) / 1000.0f;
+			lastTick = SDL_GetTicks();
+
 			running = HandleEvents();
 
+			// Update the camera.
+			const Uint8* keys = SDL_GetKeyboardState(NULL);
+			if (keys[SDL_SCANCODE_RIGHT] || keys[SDL_SCANCODE_D])
+				cameraAngle += CAMERA_ANGULAR_SPEED * dt;
+			if (keys[SDL_SCANCODE_LEFT] || keys[SDL_SCANCODE_A])
+				cameraAngle -= CAMERA_ANGULAR_SPEED * dt;
+
+			camera.SetPosition(CAMERA_RADIUS * glm::vec3(cos(cameraAngle), 0, -sin(cameraAngle)));
+			camera.LookAt(glm::vec3(0, 0, 0));
+			camera.RecalculateMatrices();
+			perFrame.viewMatrix = camera.GetView();
+			perFrame.projectionMatrix = camera.GetProjection();
+
+			// Render the scene.
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			
 			glUseProgram(program);
-			glBindBufferBase(GL_UNIFORM_BUFFER, perFrameIndex, perFrameBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrame, GL_STATIC_READ);
+			glBindBufferBase(GL_UNIFORM_BUFFER, 0, perFrameBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrame, GL_DYNAMIC_DRAW);
 
-			glBindBufferBase(GL_UNIFORM_BUFFER, perInstanceIndex, perInstanceBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &perInstance, GL_STATIC_READ);
+			glBindBufferBase(GL_UNIFORM_BUFFER, 1, perInstanceBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &perInstance, GL_DYNAMIC_DRAW);
 
 			glBindVertexArray(vao);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, vertexCount);
@@ -126,7 +150,7 @@ void InitializeContext()
 	}
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, flags);
 
@@ -198,7 +222,7 @@ void InitializeScene()
 	vertices[2].texcoord = glm::vec2(+0.0f, +0.0f);
 	vertices[3].texcoord = glm::vec2(+1.0f, +0.0f);
 
-	vertexCount = vertices.size();
+	vertexCount = (GLuint) vertices.size();
 
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -213,21 +237,29 @@ void InitializeScene()
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 
-	vshader = CompileShaderFromFile("../../assets/shaders/mesh_textured.vs", GL_VERTEX_SHADER);
-	fshader = CompileShaderFromFile("../../assets/shaders/mesh_textured.fs", GL_FRAGMENT_SHADER);
+	vshader = CompileShaderFromFile(VS_FILEPATH, GL_VERTEX_SHADER);
+	fshader = CompileShaderFromFile(FS_FILEPATH, GL_FRAGMENT_SHADER);
 	
 	program = glCreateProgram();
 	glAttachShader(program, vshader);
 	glAttachShader(program, fshader);
 	LinkProgram(program);
 
-	perFrameIndex = glGetUniformBlockIndex(program, "PerFrame");
-	perInstanceIndex = glGetUniformBlockIndex(program, "PerInstance");
+	//perFrameIndex = glGetUniformBlockIndex(program, "PerFrame");
+	//perInstanceIndex = glGetUniformBlockIndex(program, "PerInstance");
 
 	glGenBuffers(1, &perFrameBuffer);
 	glGenBuffers(1, &perInstanceBuffer);
 
 	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
+
+	camera.SetProjection(Camera::GetPerspectiveProjection(1.0f, 200.0f, glm::radians(75.0f), (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
+	camera.SetPosition(glm::vec3(0, 0, 100));
+	camera.SetFacing(glm::vec3(0, 0, -1));
+	camera.RecalculateMatrices();
+
+	perFrame.viewMatrix = camera.GetView();
+	perFrame.projectionMatrix = camera.GetProjection();
 }
 
 void CleanupScene()

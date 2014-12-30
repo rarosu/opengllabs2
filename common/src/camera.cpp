@@ -57,8 +57,6 @@ const glm::mat4& Camera::GetProjectionView() const
 
 void Camera::RecalculateMatrices()
 {
-	//view = glm::mat4();
-
 	view = glm::lookAt(position, position + facing, glm::vec3(0, 1, 0));
 
 	projectionView = projection * view;
@@ -66,6 +64,10 @@ void Camera::RecalculateMatrices()
 
 glm::mat4 Camera::GetPerspectiveProjection(float near, float far, float fovY, float width, float height)
 {
-	return glm::perspectiveFov(fovY, width, height, near, far);
-	//return glm::mat4();
+	float aspect = width / height;
+	float fovScale = 1.0f / std::tan(fovY * 0.5f);
+	return glm::mat4(1.0f / (fovScale * aspect), 0.0f, 0.0f, 0.0f,
+					 0.0f, 1.0f / fovScale, 0.0f, 0.0f,
+					 0.0f, 0.0f, (near + far) / (near - far), -1.0f,
+					 0.0f, 0.0f, 2 * near * far / (near - far), 0.0f);
 }

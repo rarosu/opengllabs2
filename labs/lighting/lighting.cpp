@@ -12,7 +12,6 @@
 #include <common/shader.h>
 #include <common/camera.h>
 
-
 #undef main
 
 const int VIEWPORT_WIDTH = 800;
@@ -20,8 +19,11 @@ const int VIEWPORT_HEIGHT = 600;
 const char* const FONT_FILEPATH = "../../../assets/fonts/FreeSans.ttf";
 const char* const VS_FILEPATH = "../../../assets/shaders/mesh_textured.vs";
 const char* const FS_FILEPATH = "../../../assets/shaders/mesh_textured.fs";
-const float CAMERA_RADIUS = 50.0f;
+const float CAMERA_RADIUS = 5.0f;
 const float CAMERA_ANGULAR_SPEED = (float) M_PI;
+const float PERSPECTIVE_NEAR = 1.0f;
+const float PERSPECTIVE_FAR = 100.0f;
+const float PERSPECTIVE_FOV = glm::radians(75.0f);
 
 FT_Library ft = nullptr;
 FT_Face face = nullptr;
@@ -36,7 +38,7 @@ GLuint program = 0;
 GLuint perFrameBuffer = 0;
 GLuint perInstanceBuffer = 0;
 Camera camera;
-float cameraAngle;
+float cameraAngle = (float) M_PI * 0.5f;
 
 struct PerFrameUniformBuffer
 {
@@ -76,12 +78,7 @@ int main()
 			running = HandleEvents();
 
 			// Update the camera.
-			const Uint8* keys = SDL_GetKeyboardState(NULL);
-			if (keys[SDL_SCANCODE_RIGHT] || keys[SDL_SCANCODE_D])
-				cameraAngle += CAMERA_ANGULAR_SPEED * dt;
-			if (keys[SDL_SCANCODE_LEFT] || keys[SDL_SCANCODE_A])
-				cameraAngle -= CAMERA_ANGULAR_SPEED * dt;
-
+			cameraAngle += CAMERA_ANGULAR_SPEED * dt;
 			camera.SetPosition(CAMERA_RADIUS * glm::vec3(cos(cameraAngle), 0, -sin(cameraAngle)));
 			camera.LookAt(glm::vec3(0, 0, 0));
 			camera.RecalculateMatrices();
@@ -124,7 +121,7 @@ int main()
 		SDL_GL_DeleteContext(context);
 	if (window != nullptr)
 		SDL_DestroyWindow(window);
-	
+
 	return result;
 }
 
@@ -253,8 +250,8 @@ void InitializeScene()
 
 	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
 
-	camera.SetProjection(Camera::GetPerspectiveProjection(1.0f, 200.0f, glm::radians(75.0f), (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
-	camera.SetPosition(glm::vec3(0, 0, 100));
+	camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
+	camera.SetPosition(glm::vec3(0, 0, CAMERA_RADIUS));
 	camera.SetFacing(glm::vec3(0, 0, -1));
 	camera.RecalculateMatrices();
 
@@ -282,6 +279,20 @@ bool HandleEvents()
 		{
 			case SDL_QUIT:
 				return false;
+			case SDL_WINDOWEVENT:
+			{
+				switch (e.window.event)
+				{
+					case SDL_WINDOWEVENT_RESIZED:
+					{
+						glViewport(0, 0, e.window.data1, e.window.data2);
+						camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, e.window.data1, e.window.data2));
+
+						std::cout << "Window resized to " << e.window.data1 << "x" << e.window.data2 << std::endl;
+					} break;
+				}
+			} break;
+				
 		}
 
 	}

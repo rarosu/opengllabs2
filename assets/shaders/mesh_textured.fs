@@ -8,12 +8,6 @@ in vec2 vs_texcoord;
 
 out vec4 out_color;
 
-layout(binding = 0, std140) uniform PerFrame
-{
-	mat4 viewMatrix;
-	mat4 projectionMatrix;
-};
-
 layout(binding = 2, std140) uniform Constant
 {
 	vec4 ambientLightIntensity;
@@ -34,5 +28,5 @@ void main()
         lightIntensity += pointLightIntensity[i] * incidence;
     }
 
-    out_color = texture(samplerDiffuse, vs_texcoord) * lightIntensity;
+    out_color = texture(samplerDiffuse, vs_texcoord) * vec4(lightIntensity.rgb, 1.0f);
 }

@@ -19,7 +19,7 @@ layout(binding = 0, std140) uniform PerFrame
 layout(binding = 1, std140) uniform PerInstance
 {
 	mat4 modelMatrix;
-	mat3 normalMatrix;
+	mat4 normalMatrix;
 };
 
 layout(binding = 2, std140) uniform Constant
@@ -33,6 +33,6 @@ void main()
 {
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_positionM, 1.0f);
 	vs_positionW = (modelMatrix * vec4(in_positionM, 1.0f)).xyz;
-	vs_normalW = normalize(normalMatrix * in_normalM);
+	vs_normalW = normalize(mat3(normalMatrix) * in_normalM);
 	vs_texcoord = in_texcoord;
 }

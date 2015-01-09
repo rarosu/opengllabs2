@@ -89,7 +89,7 @@ struct PerFrameUniformBuffer
 struct PerInstanceUniformBuffer
 {
 	glm::mat4 modelMatrix;
-	glm::mat3 normalMatrix;
+	glm::mat4 normalMatrix;
 } perInstance;
 
 struct ConstantBuffer
@@ -136,7 +136,7 @@ int main()
 			// Update the crate.
 			crateAngle += dt * CRATE_ANGULAR_VELOCITY;
 			perInstance.modelMatrix = glm::rotate(crateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-			perInstance.normalMatrix = glm::mat3(glm::transpose(glm::inverse(perInstance.modelMatrix)));
+			perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));
 
 			// Render the scene.
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -305,7 +305,7 @@ void InitializeScene()
 	glGenBuffers(1, &constantBuffer);
 
 	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
-	perInstance.normalMatrix = glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix)));
+	perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));
 
 	camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
 	camera.SetPosition(glm::vec3(0, 0, 5));

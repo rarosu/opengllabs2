@@ -14,6 +14,7 @@
 #include <common/text.h>
 #include <common/shader.h>
 #include <common/camera.h>
+#include <common/model.h>
 
 #undef main
 
@@ -25,6 +26,7 @@ const char* const FONT_FILEPATH = "../../../assets/fonts/FreeSans.ttf";
 const char* const VS_FILEPATH = "../../../assets/shaders/mesh_textured.vs";
 const char* const FS_FILEPATH = "../../../assets/shaders/mesh_textured.fs";
 const char* const TEXTURE_FILEPATH = "../../../assets/textures/crate0_diffuse.dds";
+const char* const MODEL_FILEPATH = "../../../assets/models/crate.obj";
 const float CRATE_ANGULAR_VELOCITY = 1.0f;
 const float PERSPECTIVE_NEAR = 1.0f;
 const float PERSPECTIVE_FAR = 100.0f;
@@ -36,7 +38,9 @@ FT_Library ft = nullptr;
 FT_Face face = nullptr;
 SDL_Window* window = nullptr;
 SDL_GLContext context = nullptr;
-GLuint vbo = 0;
+GLuint position_vbo;
+GLuint normal_vbo;
+GLuint texcoord_vbo;
 GLuint vao = 0;
 GLuint vertexCount = 0;
 GLuint vshader = 0;
@@ -258,18 +262,32 @@ void InitializeContext()
 
 void InitializeScene()
 {
-	std::vector<Vertex> vertices = CreateCube();
-	vertexCount = (GLuint) vertices.size();
+	std::vector<glm::vec3> positions;
+	std::vector<glm::vec3> normals;
+	std::vector<glm::vec2> texcoords;
+	if (!LoadOBJ(MODEL_FILEPATH, positions, normals, texcoords))
+		throw std::runtime_error(std::string("Failed to load model: ") + MODEL_FILEPATH);
 
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
+	vertexCount = (GLuint) positions.size();
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*) sizeof(glm::vec3));
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*) (sizeof(glm::vec3) + sizeof(glm::vec3)) );
+
+	glGenBuffers(1, &position_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, position_vbo);
+	glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(glm::vec3), &positions[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glGenBuffers(1, &normal_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
+	glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glGenBuffers(1, &texcoord_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, texcoord_vbo);
+	glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(glm::vec2), &texcoords[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
@@ -320,7 +338,9 @@ void CleanupScene()
 	glDeleteBuffers(1, &perFrameBuffer);
 	glDeleteBuffers(1, &perInstanceBuffer);
 	glDeleteBuffers(1, &constantBuffer);
-	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &position_vbo);
+	glDeleteBuffers(1, &normal_vbo);
+	glDeleteBuffers(1, &texcoord_vbo);
 	glDeleteVertexArrays(1, &vao);
 	glDetachShader(program, vshader);
 	glDetachShader(program, fshader);
@@ -430,142 +450,4 @@ void HandleCamera(float dt)
 		displacement += camera.GetRight() * speed;
 
 	camera.SetPosition(displacement);
-}
-
-std::vector<Vertex> CreateCube()
-{
-	std::vector<Vertex> vertices(36);
-
-	// Positions
-	vertices[0].position = glm::vec3(-1, +1, -1);
-	vertices[1].position = glm::vec3(+1, +1, -1);
-	vertices[2].position = glm::vec3(+1, +1, +1);
-	vertices[3].position = glm::vec3(-1, +1, -1);
-	vertices[4].position = glm::vec3(-1, +1, +1);
-	vertices[5].position = glm::vec3(+1, +1, +1);
-
-	vertices[6].position = glm::vec3(-1, -1, -1);
-	vertices[7].position = glm::vec3(+1, -1, -1);
-	vertices[8].position = glm::vec3(+1, -1, +1);
-	vertices[9].position = glm::vec3(-1, -1, -1);
-	vertices[10].position = glm::vec3(-1, -1, +1);
-	vertices[11].position = glm::vec3(+1, -1, +1);
-
-	vertices[12].position = glm::vec3(-1, -1, +1);
-	vertices[13].position = glm::vec3(+1, -1, +1);
-	vertices[14].position = glm::vec3(+1, +1, +1);
-	vertices[15].position = glm::vec3(-1, -1, +1);
-	vertices[16].position = glm::vec3(-1, +1, +1);
-	vertices[17].position = glm::vec3(+1, +1, +1);
-
-	vertices[18].position = glm::vec3(-1, -1, -1);
-	vertices[19].position = glm::vec3(+1, -1, -1);
-	vertices[20].position = glm::vec3(+1, +1, -1);
-	vertices[21].position = glm::vec3(-1, -1, -1);
-	vertices[22].position = glm::vec3(-1, +1, -1);
-	vertices[23].position = glm::vec3(+1, +1, -1);
-
-	vertices[24].position = glm::vec3(-1, -1, +1);
-	vertices[25].position = glm::vec3(-1, -1, -1);
-	vertices[26].position = glm::vec3(-1, +1, -1);
-	vertices[27].position = glm::vec3(-1, -1, +1);
-	vertices[28].position = glm::vec3(-1, +1, -1);
-	vertices[29].position = glm::vec3(-1, +1, +1);
-
-	vertices[30].position = glm::vec3(+1, -1, +1);
-	vertices[31].position = glm::vec3(+1, -1, -1);
-	vertices[32].position = glm::vec3(+1, +1, -1);
-	vertices[33].position = glm::vec3(+1, -1, +1);
-	vertices[34].position = glm::vec3(+1, +1, -1);
-	vertices[35].position = glm::vec3(+1, +1, +1);
-
-
-
-	// Normals
-	vertices[0].normal = glm::vec3(0, +1, 0);
-	vertices[1].normal = glm::vec3(0, +1, 0);
-	vertices[2].normal = glm::vec3(0, +1, 0);
-	vertices[3].normal = glm::vec3(0, +1, 0);
-	vertices[4].normal = glm::vec3(0, +1, 0);
-	vertices[5].normal = glm::vec3(0, +1, 0);
-
-	vertices[6].normal = glm::vec3(0, -1, 0);
-	vertices[7].normal = glm::vec3(0, -1, 0);
-	vertices[8].normal = glm::vec3(0, -1, 0);
-	vertices[9].normal = glm::vec3(0, -1, 0);
-	vertices[10].normal = glm::vec3(0, -1, 0);
-	vertices[11].normal = glm::vec3(0, -1, 0);
-
-	vertices[12].normal = glm::vec3(0, 0, +1);
-	vertices[13].normal = glm::vec3(0, 0, +1);
-	vertices[14].normal = glm::vec3(0, 0, +1);
-	vertices[15].normal = glm::vec3(0, 0, +1);
-	vertices[16].normal = glm::vec3(0, 0, +1);
-	vertices[17].normal = glm::vec3(0, 0, +1);
-
-	vertices[18].normal = glm::vec3(0, 0, -1);
-	vertices[19].normal = glm::vec3(0, 0, -1);
-	vertices[20].normal = glm::vec3(0, 0, -1);
-	vertices[21].normal = glm::vec3(0, 0, -1);
-	vertices[22].normal = glm::vec3(0, 0, -1);
-	vertices[23].normal = glm::vec3(0, 0, -1);
-
-	vertices[24].normal = glm::vec3(-1, 0, 0);
-	vertices[25].normal = glm::vec3(-1, 0, 0);
-	vertices[26].normal = glm::vec3(-1, 0, 0);
-	vertices[27].normal = glm::vec3(-1, 0, 0);
-	vertices[28].normal = glm::vec3(-1, 0, 0);
-	vertices[29].normal = glm::vec3(-1, 0, 0);
-
-	vertices[30].normal = glm::vec3(+1, 0, 0);
-	vertices[31].normal = glm::vec3(+1, 0, 0);
-	vertices[32].normal = glm::vec3(+1, 0, 0);
-	vertices[33].normal = glm::vec3(+1, 0, 0);
-	vertices[34].normal = glm::vec3(+1, 0, 0);
-	vertices[35].normal = glm::vec3(+1, 0, 0);
-
-	// Texture coordinates
-	vertices[0].texcoord = glm::vec2(0, 0);
-	vertices[1].texcoord = glm::vec2(1, 0);
-	vertices[2].texcoord = glm::vec2(1, 1);
-	vertices[3].texcoord = glm::vec2(0, 0);
-	vertices[4].texcoord = glm::vec2(0, 1);
-	vertices[5].texcoord = glm::vec2(1, 1);
-
-	vertices[6].texcoord = glm::vec2(0, 0);
-	vertices[7].texcoord = glm::vec2(1, 0);
-	vertices[8].texcoord = glm::vec2(1, 1);
-	vertices[9].texcoord = glm::vec2(0, 0);
-	vertices[10].texcoord = glm::vec2(0, 1);
-	vertices[11].texcoord = glm::vec2(1, 1);
-
-	vertices[12].texcoord = glm::vec2(0, 0);
-	vertices[13].texcoord = glm::vec2(1, 0);
-	vertices[14].texcoord = glm::vec2(1, 1);
-	vertices[15].texcoord = glm::vec2(0, 0);
-	vertices[16].texcoord = glm::vec2(0, 1);
-	vertices[17].texcoord = glm::vec2(1, 1);
-
-	vertices[18].texcoord = glm::vec2(0, 0);
-	vertices[19].texcoord = glm::vec2(1, 0);
-	vertices[20].texcoord = glm::vec2(1, 1);
-	vertices[21].texcoord = glm::vec2(0, 0);
-	vertices[22].texcoord = glm::vec2(0, 1);
-	vertices[23].texcoord = glm::vec2(1, 1);
-
-	vertices[24].texcoord = glm::vec2(0, 0);
-	vertices[25].texcoord = glm::vec2(1, 0);
-	vertices[26].texcoord = glm::vec2(1, 1);
-	vertices[27].texcoord = glm::vec2(0, 0);
-	vertices[28].texcoord = glm::vec2(0, 1);
-	vertices[29].texcoord = glm::vec2(1, 1);
-
-	vertices[30].texcoord = glm::vec2(0, 0);
-	vertices[31].texcoord = glm::vec2(1, 0);
-	vertices[32].texcoord = glm::vec2(1, 1);
-	vertices[33].texcoord = glm::vec2(0, 0);
-	vertices[34].texcoord = glm::vec2(0, 1);
-	vertices[35].texcoord = glm::vec2(1, 1);
-
-	return vertices;
 }

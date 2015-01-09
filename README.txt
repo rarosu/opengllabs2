@@ -4,3 +4,6 @@ Libraries used:
     glm: http://glm.g-truc.net/0.9.5/index.html
     gli: http://www.g-truc.net/project-0024.html
     FreeType: http://www.freetype.org/
+    
+Art credits:
+    Crate texture by Luke.RUSTLTD @ OpenGameArt.org. Texture released in public domain.

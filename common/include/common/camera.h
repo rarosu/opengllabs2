@@ -1,5 +1,7 @@
 #pragma once
 
+#define GLM_FORCE_RADIANS
+
 #include <glm/glm.hpp>
 
 class Camera
@@ -14,6 +16,7 @@ public:
 
 	const glm::vec3& GetPosition() const;
 	const glm::vec3& GetFacing() const;
+	glm::vec3 GetRight() const;
 	const glm::mat4& GetView() const;
 	const glm::mat4& GetProjection() const;
 	const glm::mat4& GetProjectionView() const;

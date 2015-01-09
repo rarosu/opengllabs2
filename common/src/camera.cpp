@@ -39,6 +39,11 @@ const glm::vec3& Camera::GetFacing() const
 	return facing;
 }
 
+glm::vec3 Camera::GetRight() const
+{
+	return glm::cross(facing, glm::vec3(0, 1, 0));
+}
+
 const glm::mat4& Camera::GetView() const
 {
 	return view;
@@ -64,10 +69,15 @@ void Camera::RecalculateMatrices()
 
 glm::mat4 Camera::GetPerspectiveProjection(float near, float far, float fovY, float width, float height)
 {
-	float aspect = width / height;
+	glm::mat4 perspective(0);
+
+	float aspect = height / width;
 	float fovScale = 1.0f / std::tan(fovY * 0.5f);
-	return glm::mat4(1.0f / (fovScale * aspect), 0.0f, 0.0f, 0.0f,
-					 0.0f, 1.0f / fovScale, 0.0f, 0.0f,
-					 0.0f, 0.0f, (near + far) / (near - far), -1.0f,
-					 0.0f, 0.0f, 2 * near * far / (near - far), 0.0f);
+	perspective[0][0] = fovScale * aspect;
+	perspective[1][1] = fovScale;
+	perspective[2][2] = (near + far) / (near - far);
+	perspective[3][2] = 2 * near * far / (near - far);
+	perspective[2][3] = -1.0f;
+
+	return perspective;
 }

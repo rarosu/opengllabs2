@@ -18,19 +18,23 @@
 
 #undef main
 
-
-
 const int VIEWPORT_WIDTH = 800;
 const int VIEWPORT_HEIGHT = 600;
-const char* const FONT_FILEPATH = "../../../assets/fonts/FreeSans.ttf";
-const char* const VS_FILEPATH = "../../../assets/shaders/mesh_textured.vs";
-const char* const FS_FILEPATH = "../../../assets/shaders/mesh_textured.fs";
-const char* const TEXTURE_FILEPATH = "../../../assets/textures/crate0_diffuse.dds";
-const char* const MODEL_FILEPATH = "../../../assets/models/crate.obj";
-const float CRATE_ANGULAR_VELOCITY = 1.0f;
 const float PERSPECTIVE_NEAR = 1.0f;
 const float PERSPECTIVE_FAR = 100.0f;
 const float PERSPECTIVE_FOV = glm::radians(75.0f);
+
+const std::string ASSETS_FILEPATH = "../../../assets/";
+const std::string FONTS_FILEPATH = ASSETS_FILEPATH + "fonts/";
+const std::string MODELS_FILEPATH = ASSETS_FILEPATH + "models/";
+const std::string SHADERS_FILEPATH = ASSETS_FILEPATH + "shaders/";
+const std::string TEXTURES_FILEPATH = ASSETS_FILEPATH + "textures/";
+const std::string FONT_FILE = "FreeSans.ttf";
+const std::string MODEL_FILE = "crate.obj";
+const std::string VS_FILE = "mesh_textured.vs";
+const std::string FS_FILE = "mesh_textured.fs";
+
+const float CRATE_ANGULAR_VELOCITY = 1.0f;
 const int POINT_LIGHT_COUNT = 1;
 const glm::vec3 POINT_LIGHT_POSITION = glm::vec3(5.0f, 10.0f, 0.0f);
 
@@ -38,9 +42,9 @@ FT_Library ft = nullptr;
 FT_Face face = nullptr;
 SDL_Window* window = nullptr;
 SDL_GLContext context = nullptr;
-GLuint position_vbo;
-GLuint normal_vbo;
-GLuint texcoord_vbo;
+GLuint position_vbo = 0;
+GLuint normal_vbo = 0;
+GLuint texcoord_vbo = 0;
 GLuint vao = 0;
 GLuint vertexCount = 0;
 GLuint vshader = 0;
@@ -73,30 +77,33 @@ struct InputState
 	int mouseY;
 } currentInput, previousInput;
 
-struct Vertex
+struct PointLight
 {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec2 texcoord;
+	glm::vec4 positionW;
+	glm::vec4 intensity;
+	float cutoff;
 };
 
 struct PerFrameUniformBuffer
 {
 	glm::mat4 viewMatrix;
 	glm::mat4 projectionMatrix;
+	glm::vec4 cameraPositionW;
 } perFrame;
 
 struct PerInstanceUniformBuffer
 {
 	glm::mat4 modelMatrix;
 	glm::mat4 normalMatrix;
+
+	// The last component is the shininess of the material.
+	glm::vec4 materialSpecularColor;
 } perInstance;
 
 struct ConstantBuffer
 {
 	glm::vec4 ambientLightIntensity;
-	glm::vec4 pointLightPositionW[POINT_LIGHT_COUNT];
-	glm::vec4 pointLightIntensity[POINT_LIGHT_COUNT];
+	PointLight pointLights[POINT_LIGHT_COUNT];
 } constant;
 
 void InitializeContext();
@@ -104,7 +111,6 @@ void InitializeScene();
 bool HandleEvents();
 void CleanupScene();
 void HandleCamera(float dt);
-std::vector<Vertex> CreateCube();
 
 int main()
 {
@@ -132,6 +138,7 @@ int main()
 
 			perFrame.viewMatrix = camera.GetView();
 			perFrame.projectionMatrix = camera.GetProjection();
+			perFrame.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
 
 			// Update the crate.
 			crateAngle += dt * CRATE_ANGULAR_VELOCITY;
@@ -249,51 +256,49 @@ void InitializeContext()
 		throw std::runtime_error("Failed to initialize FreeType");
 	}
 
-	if (FT_New_Face(ft, FONT_FILEPATH, 0, &face) != 0)
+	if (FT_New_Face(ft, (FONTS_FILEPATH + FONT_FILE).c_str(), 0, &face) != 0)
 	{
-		throw std::runtime_error(std::string("Failed to load face: ") + FONT_FILEPATH);
+		throw std::runtime_error(std::string("Failed to load face: ") + FONT_FILE);
 	}
 
 	if (FT_Set_Pixel_Sizes(face, 0, 48) != 0)
 	{
-		throw std::runtime_error(std::string("Failed to load face: ") + FONT_FILEPATH);
+		throw std::runtime_error(std::string("Failed to load face: ") + FONT_FILE);
 	}
 }
 
 void InitializeScene()
 {
-	std::vector<glm::vec3> positions;
-	std::vector<glm::vec3> normals;
-	std::vector<glm::vec2> texcoords;
-	if (!LoadOBJ(MODEL_FILEPATH, positions, normals, texcoords))
-		throw std::runtime_error(std::string("Failed to load model: ") + MODEL_FILEPATH);
+	OBJ model;
+	if (!LoadOBJ((MODELS_FILEPATH + MODEL_FILE).c_str(), model))
+		throw std::runtime_error(std::string("Failed to load model: ") + MODEL_FILE);
 
-	vertexCount = (GLuint) positions.size();
+	vertexCount = (GLuint) model.positions.size();
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
 	glGenBuffers(1, &position_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, position_vbo);
-	glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(glm::vec3), &positions[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, model.positions.size() * sizeof(glm::vec3), &model.positions[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glGenBuffers(1, &normal_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
-	glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, model.normals.size() * sizeof(glm::vec3), &model.normals[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glGenBuffers(1, &texcoord_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, texcoord_vbo);
-	glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(glm::vec2), &texcoords[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, model.texcoords.size() * sizeof(glm::vec2), &model.texcoords[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 
-	vshader = CompileShaderFromFile(VS_FILEPATH, GL_VERTEX_SHADER);
-	fshader = CompileShaderFromFile(FS_FILEPATH, GL_FRAGMENT_SHADER);
+	vshader = CompileShaderFromFile((SHADERS_FILEPATH + VS_FILE).c_str(), GL_VERTEX_SHADER);
+	fshader = CompileShaderFromFile((SHADERS_FILEPATH + FS_FILE).c_str(), GL_FRAGMENT_SHADER);
 	
 	program = glCreateProgram();
 	glAttachShader(program, vshader);
@@ -304,22 +309,11 @@ void InitializeScene()
 	glGenBuffers(1, &perInstanceBuffer);
 	glGenBuffers(1, &constantBuffer);
 
-	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
-	perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));
+	MTL material;
+	if (!LoadMTL((MODELS_FILEPATH + model.mtllib).c_str(), material))
+		throw std::runtime_error(std::string("Failed to load material: ") + model.mtllib);
 
-	camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
-	camera.SetPosition(glm::vec3(0, 0, 5));
-	camera.SetFacing(glm::vec3(0, 0, -1));
-	camera.RecalculateMatrices();
-
-	perFrame.viewMatrix = camera.GetView();
-	perFrame.projectionMatrix = camera.GetProjection();
-
-	constant.ambientLightIntensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
-	constant.pointLightPositionW[0] = glm::vec4(5.0f, 5.0f, 5.0f, 1.0f);
-	constant.pointLightIntensity[0] = glm::vec4(0.6f, 0.6f, 0.0f, 1.0f);
-
-	gli::storage crateImage = gli::load_dds(TEXTURE_FILEPATH);
+	gli::storage crateImage = gli::load_dds((TEXTURES_FILEPATH + material.map_Kd).c_str());
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, crateImage.dimensions(0).x, crateImage.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, crateImage.data());
@@ -329,6 +323,25 @@ void InitializeScene()
 	glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+
+	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
+	perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));
+	perInstance.materialSpecularColor = glm::vec4(material.Ks, material.Ns);
+
+	camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
+	camera.SetPosition(glm::vec3(0, 0, 5));
+	camera.SetFacing(glm::vec3(0, 0, -1));
+	camera.RecalculateMatrices();
+
+	perFrame.viewMatrix = camera.GetView();
+	perFrame.projectionMatrix = camera.GetProjection();
+	perFrame.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
+
+	constant.ambientLightIntensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	constant.pointLights[0].positionW = glm::vec4(0.0f, 5.0f, 5.0f, 1.0f);
+	constant.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
+	constant.pointLights[0].cutoff = 15.0f;
 }
 
 void CleanupScene()

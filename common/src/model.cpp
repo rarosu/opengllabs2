@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 
-bool LoadOBJ(const char* filepath, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& normals, std::vector<glm::vec2>& texcoords)
+bool LoadOBJ(const char* filepath, OBJ& model)
 {
 	bool result = true;
 	std::ifstream file(filepath);
@@ -95,11 +95,14 @@ bool LoadOBJ(const char* filepath, std::vector<glm::vec3>& positions, std::vecto
 					vt = vt - 1;
 					vn = vn - 1;
 
-					positions.push_back(positionLUT[v]);
-					texcoords.push_back(texcoordLUT[vt]);
-					normals.push_back(normalLUT[vn]);
+					model.positions.push_back(positionLUT[v]);
+					model.texcoords.push_back(texcoordLUT[vt]);
+					model.normals.push_back(normalLUT[vn]);
 				}
-				
+			}
+			else if (identifier == "mtllib")
+			{
+				ss >> model.mtllib;
 			}
 		}
 	}
@@ -110,9 +113,95 @@ bool LoadOBJ(const char* filepath, std::vector<glm::vec3>& positions, std::vecto
 
 	if (!result)
 	{
-		positions.clear();
-		normals.clear();
-		texcoords.clear();
+		model.positions.clear();
+		model.normals.clear();
+		model.texcoords.clear();
+	}
+
+	return result;
+}
+
+bool LoadMTL(const char* filepath, MTL& material)
+{
+	bool result = true;
+	std::ifstream file(filepath);
+
+	if (file.is_open())
+	{
+		while (!file.eof())
+		{
+			std::string line;
+			std::stringstream ss;
+
+			std::getline(file, line, '\n');
+			ss.str(line);
+
+			std::string identifier;
+			ss >> identifier;
+
+			if (identifier == "Ka")
+			{
+				ss >> material.Ka.r;
+				ss >> material.Ka.g;
+				ss >> material.Ka.b;
+
+				if (ss.fail() || ss.bad())
+				{
+					result = false;
+					break;
+				}
+			}
+			else if (identifier == "Kd")
+			{
+				ss >> material.Kd.r;
+				ss >> material.Kd.g;
+				ss >> material.Kd.b;
+
+				if (ss.fail() || ss.bad())
+				{
+					result = false;
+					break;
+				}
+			}
+			else if (identifier == "Ks")
+			{
+				ss >> material.Ks.r;
+				ss >> material.Ks.g;
+				ss >> material.Ks.b;
+
+				if (ss.fail() || ss.bad())
+				{
+					result = false;
+					break;
+				}
+			}
+			else if (identifier == "Ns")
+			{
+				ss >> material.Ns;
+
+				if (ss.fail() || ss.bad())
+				{
+					result = false;
+					break;
+				}
+			}
+			else if (identifier == "map_Ka")
+			{
+				ss >> material.map_Ka;
+			}
+			else if (identifier == "map_Kd")
+			{
+				ss >> material.map_Kd;
+			}
+			else if (identifier == "map_Ks")
+			{
+				ss >> material.map_Ks;
+			}
+		}
+	}
+	else
+	{
+		result = false;
 	}
 
 	return result;

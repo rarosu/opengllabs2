@@ -14,19 +14,16 @@ layout(binding = 0, std140) uniform PerFrame
 {
 	mat4 viewMatrix;
 	mat4 projectionMatrix;
+	vec4 cameraPositionW;
 };
 
 layout(binding = 1, std140) uniform PerInstance
 {
 	mat4 modelMatrix;
 	mat4 normalMatrix;
-};
 
-layout(binding = 2, std140) uniform Constant
-{
-	vec4 ambientLightIntensity;
-	vec4 pointLightPositionW[POINT_LIGHT_COUNT];
-	vec4 pointLightIntensity[POINT_LIGHT_COUNT];
+	// The last component is the shininess of the material.
+	vec4 materialSpecularColor;
 };
 
 void main()

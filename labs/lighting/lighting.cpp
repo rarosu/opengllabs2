@@ -31,8 +31,8 @@ const std::string SHADERS_FILEPATH = ASSETS_FILEPATH + "shaders/";
 const std::string TEXTURES_FILEPATH = ASSETS_FILEPATH + "textures/";
 const std::string FONT_FILE = "FreeSans.ttf";
 const std::string MODEL_FILE = "crate.obj";
-const std::string VS_FILE = "mesh_textured.vs";
-const std::string FS_FILE = "mesh_textured.fs";
+const std::string VS_FILE = "mesh_textured.vert";
+const std::string FS_FILE = "mesh_textured.frag";
 
 const float CRATE_ANGULAR_VELOCITY = 1.0f;
 const int POINT_LIGHT_COUNT = 1;
@@ -119,7 +119,6 @@ int main()
 	{
 		InitializeContext();
 		InitializeScene();
-
 		
 		Uint32 lastTick = SDL_GetTicks();
 		float dt = 0.0f;
@@ -154,9 +153,6 @@ int main()
 
 			glBindBufferBase(GL_UNIFORM_BUFFER, 1, perInstanceBuffer);
 			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &perInstance, GL_DYNAMIC_DRAW);
-
-			glBindBufferBase(GL_UNIFORM_BUFFER, 2, constantBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constant, GL_DYNAMIC_DRAW);
 
 			glActiveTexture(GL_TEXTURE0 + textureUnit);
 			glBindTexture(GL_TEXTURE_2D, texture);
@@ -342,6 +338,9 @@ void InitializeScene()
 	constant.pointLights[0].positionW = glm::vec4(0.0f, 5.0f, 5.0f, 1.0f);
 	constant.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
 	constant.pointLights[0].cutoff = 15.0f;
+
+	glBindBufferBase(GL_UNIFORM_BUFFER, 2, constantBuffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constant, GL_STATIC_DRAW);
 }
 
 void CleanupScene()

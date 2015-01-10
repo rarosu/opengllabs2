@@ -30,7 +30,7 @@ solution "opengllabs"
     project "common"
         kind "StaticLib"
         language "C++"
-        files { "common/**.h", "common/**.cpp", "assets/shaders/**.vs", "assets/shaders/**.fs" }
+        files { "common/**.h", "common/**.cpp", "assets/shaders/**.vert", "assets/shaders/**.frag" }
         objdir "build/common/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32", "freetype" }
     

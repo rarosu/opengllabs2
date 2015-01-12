@@ -65,9 +65,9 @@ layout(binding = 0) uniform sampler2D samplerDiffuse;
 
 void main()
 {
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    vec3 ambient = vec3(0);
+    vec3 diffuse = vec3(0);
+    vec3 specular = vec3(0);
     vec3 surfaceColor = texture(samplerDiffuse, vs_texcoord).rgb;
     vec3 surfaceToCamera = cameraPositionW.xyz - vs_positionW;
     float surfaceToCameraDistance = length(surfaceToCamera);

@@ -131,6 +131,7 @@ struct ConstantBuffer
 	SpotLight spotLights[SPOT_LIGHT_COUNT];
 } constant;
 
+void GLAPIENTRY OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param);
 void InitializeContext();
 void InitializeScene();
 bool HandleEvents();
@@ -213,6 +214,11 @@ int main()
 	return result;
 }
 
+void GLAPIENTRY OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
+{
+	std::cout << message << std::endl;
+}
+
 void InitializeContext()
 {
 	if (SDL_Init(SDL_INIT_TIMER) != 0)
@@ -253,6 +259,8 @@ void InitializeContext()
 	{
 		throw std::runtime_error(std::string("Failed to initialize GLEW: ") + (const char*) glewGetErrorString(glewResult));
 	}
+
+	glDebugMessageCallback(OutputDebugMessage, nullptr);
 
 	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
@@ -344,7 +352,6 @@ void InitializeScene()
 	glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
 
 	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
 	perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));

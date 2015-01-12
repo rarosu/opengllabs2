@@ -35,8 +35,9 @@ const std::string VS_FILE = "mesh_textured.vert";
 const std::string FS_FILE = "mesh_textured.frag";
 
 const float CRATE_ANGULAR_VELOCITY = 1.0f;
+const int DIRECTIONAL_LIGHT_COUNT = 1;
 const int POINT_LIGHT_COUNT = 1;
-const glm::vec3 POINT_LIGHT_POSITION = glm::vec3(5.0f, 10.0f, 0.0f);
+const int SPOT_LIGHT_COUNT = 1;
 
 FT_Library ft = nullptr;
 FT_Face face = nullptr;
@@ -77,11 +78,33 @@ struct InputState
 	int mouseY;
 } currentInput, previousInput;
 
+struct AmbientLight
+{
+	glm::vec4 intensity;
+};
+
+struct DirectionalLight
+{
+	glm::vec4 directionW;
+	glm::vec4 intensity;
+};
+
 struct PointLight
 {
 	glm::vec4 positionW;
 	glm::vec4 intensity;
 	float cutoff;
+	float padding[3];
+};
+
+struct SpotLight
+{
+	glm::vec4 positionW;
+	glm::vec4 directionW;
+	glm::vec4 intensity;
+	float cutoff;
+	float angle;
+	float padding[2];
 };
 
 struct PerFrameUniformBuffer
@@ -102,8 +125,10 @@ struct PerInstanceUniformBuffer
 
 struct ConstantBuffer
 {
-	glm::vec4 ambientLightIntensity;
+	AmbientLight ambientLight;
+	DirectionalLight directionalLights[DIRECTIONAL_LIGHT_COUNT];
 	PointLight pointLights[POINT_LIGHT_COUNT];
+	SpotLight spotLights[SPOT_LIGHT_COUNT];
 } constant;
 
 void InitializeContext();
@@ -334,10 +359,17 @@ void InitializeScene()
 	perFrame.projectionMatrix = camera.GetProjection();
 	perFrame.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
 
-	constant.ambientLightIntensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	constant.ambientLight.intensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	constant.directionalLights[0].directionW = glm::normalize(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+	constant.directionalLights[0].intensity = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f);
 	constant.pointLights[0].positionW = glm::vec4(0.0f, 5.0f, 5.0f, 1.0f);
 	constant.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
 	constant.pointLights[0].cutoff = 15.0f;
+	constant.spotLights[0].positionW = glm::vec4(0.0f, -5.0f, 5.0f, 1.0f);
+	constant.spotLights[0].directionW = glm::normalize(glm::vec4(0.0f, 1.0f, -1.0f, 1.0f));
+	constant.spotLights[0].intensity = glm::vec4(0.7f, 0.0f, 0.0f, 1.0f);
+	constant.spotLights[0].cutoff = 15.0f;
+	constant.spotLights[0].angle = glm::radians(45.0f);
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 2, constantBuffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constant, GL_STATIC_DRAW);

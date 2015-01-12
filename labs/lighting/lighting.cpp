@@ -30,7 +30,8 @@ const std::string MODELS_FILEPATH = ASSETS_FILEPATH + "models/";
 const std::string SHADERS_FILEPATH = ASSETS_FILEPATH + "shaders/";
 const std::string TEXTURES_FILEPATH = ASSETS_FILEPATH + "textures/";
 const std::string FONT_FILE = "FreeSans.ttf";
-const std::string MODEL_FILE = "crate.obj";
+const std::string CRATE_MODEL_FILE = "crate.obj";
+const std::string PLANE_MODEL_FILE = "plane.obj";
 const std::string VS_FILE = "mesh_textured.vert";
 const std::string FS_FILE = "mesh_textured.frag";
 
@@ -39,30 +40,9 @@ const int DIRECTIONAL_LIGHT_COUNT = 1;
 const int POINT_LIGHT_COUNT = 1;
 const int SPOT_LIGHT_COUNT = 1;
 
-FT_Library ft = nullptr;
-FT_Face face = nullptr;
-SDL_Window* window = nullptr;
-SDL_GLContext context = nullptr;
-GLuint position_vbo = 0;
-GLuint normal_vbo = 0;
-GLuint texcoord_vbo = 0;
-GLuint vao = 0;
-GLuint vertexCount = 0;
-GLuint vshader = 0;
-GLuint fshader = 0;
-GLuint program = 0;
-GLuint perFrameBuffer = 0;
-GLuint perInstanceBuffer = 0;
-GLuint constantBuffer = 0;
-GLuint texture = 0;
-GLuint sampler = 0;
-GLuint textureUnit = 0;
-Camera camera;
-float crateAngle = 0.0f;
-
 struct InputState
 {
-	InputState() 
+	InputState()
 	{
 		memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
 		mouseLeftDown = false;
@@ -76,7 +56,7 @@ struct InputState
 	bool mouseRightDown;
 	int mouseX;
 	int mouseY;
-} currentInput, previousInput;
+};
 
 struct AmbientLight
 {
@@ -112,7 +92,7 @@ struct PerFrameUniformBuffer
 	glm::mat4 viewMatrix;
 	glm::mat4 projectionMatrix;
 	glm::vec4 cameraPositionW;
-} perFrame;
+};
 
 struct PerInstanceUniformBuffer
 {
@@ -121,7 +101,7 @@ struct PerInstanceUniformBuffer
 
 	// The last component is the shininess of the material.
 	glm::vec4 materialSpecularColor;
-} perInstance;
+};
 
 struct ConstantBuffer
 {
@@ -129,7 +109,40 @@ struct ConstantBuffer
 	DirectionalLight directionalLights[DIRECTIONAL_LIGHT_COUNT];
 	PointLight pointLights[POINT_LIGHT_COUNT];
 	SpotLight spotLights[SPOT_LIGHT_COUNT];
-} constant;
+};
+
+struct Entity
+{
+	GLuint positionVBO;
+	GLuint normalVBO;
+	GLuint texcoordVBO;
+	GLuint vao;
+	GLuint vertexCount;
+	GLuint texture;
+	GLuint perInstanceBuffer;
+	PerInstanceUniformBuffer perInstanceBufferData;
+};
+
+FT_Library ft = nullptr;
+FT_Face face = nullptr;
+SDL_Window* window = nullptr;
+SDL_GLContext context = nullptr;
+
+InputState previousInput;
+InputState currentInput;
+Entity crate;
+Entity plane;
+GLuint vshader = 0;
+GLuint fshader = 0;
+GLuint program = 0;
+GLuint perFrameBuffer = 0;
+GLuint constantBuffer = 0;
+GLuint sampler = 0;
+GLuint textureUnit = 0;
+ConstantBuffer constantBufferData;
+PerFrameUniformBuffer perFrameBufferData;
+Camera camera;
+float crateAngle = 0.0f;
 
 void GLAPIENTRY OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param);
 void InitializeContext();
@@ -161,31 +174,37 @@ int main()
 			HandleCamera(dt);
 			camera.RecalculateMatrices();
 
-			perFrame.viewMatrix = camera.GetView();
-			perFrame.projectionMatrix = camera.GetProjection();
-			perFrame.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
+			perFrameBufferData.viewMatrix = camera.GetView();
+			perFrameBufferData.projectionMatrix = camera.GetProjection();
+			perFrameBufferData.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
 
 			// Update the crate.
 			crateAngle += dt * CRATE_ANGULAR_VELOCITY;
-			perInstance.modelMatrix = glm::rotate(crateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-			perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));
+			crate.perInstanceBufferData.modelMatrix = glm::rotate(crateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+			crate.perInstanceBufferData.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(crate.perInstanceBufferData.modelMatrix))));
 
 			// Render the scene.
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			
 			glUseProgram(program);
 			glBindBufferBase(GL_UNIFORM_BUFFER, 0, perFrameBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrame, GL_DYNAMIC_DRAW);
-
-			glBindBufferBase(GL_UNIFORM_BUFFER, 1, perInstanceBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &perInstance, GL_DYNAMIC_DRAW);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrameBufferData, GL_DYNAMIC_DRAW);
 
 			glActiveTexture(GL_TEXTURE0 + textureUnit);
-			glBindTexture(GL_TEXTURE_2D, texture);
 			glBindSampler(textureUnit, sampler);
 
-			glBindVertexArray(vao);
-			glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+			// Render the crate.
+			glBindBufferBase(GL_UNIFORM_BUFFER, 1, crate.perInstanceBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &crate.perInstanceBufferData, GL_DYNAMIC_DRAW);
+			glBindTexture(GL_TEXTURE_2D, crate.texture);
+			glBindVertexArray(crate.vao);
+			glDrawArrays(GL_TRIANGLES, 0, crate.vertexCount);
+
+			// Render the plane.
+			glBindBufferBase(GL_UNIFORM_BUFFER, 1, plane.perInstanceBuffer);
+			glBindTexture(GL_TEXTURE_2D, plane.texture);
+			glBindVertexArray(plane.vao);
+			glDrawArrays(GL_TRIANGLES, 0, plane.vertexCount);
 
 			SDL_GL_SwapWindow(window);
 		}
@@ -265,7 +284,7 @@ void InitializeContext()
 	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1.0f);
 
@@ -298,34 +317,102 @@ void InitializeContext()
 
 void InitializeScene()
 {
-	OBJ model;
-	if (!LoadOBJ((MODELS_FILEPATH + MODEL_FILE).c_str(), model))
-		throw std::runtime_error(std::string("Failed to load model: ") + MODEL_FILE);
+	// Load the crate.
+	{
+		OBJ model;
+		if (!LoadOBJ((MODELS_FILEPATH + CRATE_MODEL_FILE).c_str(), model))
+			throw std::runtime_error(std::string("Failed to load model: ") + CRATE_MODEL_FILE);
 
-	vertexCount = (GLuint) model.positions.size();
+		crate.vertexCount = (GLuint)model.positions.size();
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+		glGenVertexArrays(1, &crate.vao);
+		glBindVertexArray(crate.vao);
 
-	glGenBuffers(1, &position_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, position_vbo);
-	glBufferData(GL_ARRAY_BUFFER, model.positions.size() * sizeof(glm::vec3), &model.positions[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glGenBuffers(1, &crate.positionVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, crate.positionVBO);
+		glBufferData(GL_ARRAY_BUFFER, model.positions.size() * sizeof(glm::vec3), &model.positions[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glGenBuffers(1, &normal_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
-	glBufferData(GL_ARRAY_BUFFER, model.normals.size() * sizeof(glm::vec3), &model.normals[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glGenBuffers(1, &crate.normalVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, crate.normalVBO);
+		glBufferData(GL_ARRAY_BUFFER, model.normals.size() * sizeof(glm::vec3), &model.normals[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glGenBuffers(1, &texcoord_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, texcoord_vbo);
-	glBufferData(GL_ARRAY_BUFFER, model.texcoords.size() * sizeof(glm::vec2), &model.texcoords[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+		glGenBuffers(1, &crate.texcoordVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, crate.texcoordVBO);
+		glBufferData(GL_ARRAY_BUFFER, model.texcoords.size() * sizeof(glm::vec2), &model.texcoords[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+
+		MTL material;
+		if (!LoadMTL((MODELS_FILEPATH + model.mtllib).c_str(), material))
+			throw std::runtime_error(std::string("Failed to load material: ") + model.mtllib);
+
+		gli::storage textureImage = gli::load_dds((TEXTURES_FILEPATH + material.map_Kd).c_str());
+		glGenTextures(1, &crate.texture);
+		glBindTexture(GL_TEXTURE_2D, crate.texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, textureImage.dimensions(0).x, textureImage.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage.data());
 	
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
+		crate.perInstanceBufferData.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
+		crate.perInstanceBufferData.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(crate.perInstanceBufferData.modelMatrix))));
+		crate.perInstanceBufferData.materialSpecularColor = glm::vec4(material.Ks, material.Ns);
+	
+		glGenBuffers(1, &crate.perInstanceBuffer);
+	}
 
+	// Load the plane.
+	{
+		OBJ model;
+		if (!LoadOBJ((MODELS_FILEPATH + PLANE_MODEL_FILE).c_str(), model))
+			throw std::runtime_error(std::string("Failed to load model: ") + PLANE_MODEL_FILE);
+
+		plane.vertexCount = (GLuint)model.positions.size();
+
+		glGenVertexArrays(1, &plane.vao);
+		glBindVertexArray(plane.vao);
+
+		glGenBuffers(1, &plane.positionVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, plane.positionVBO);
+		glBufferData(GL_ARRAY_BUFFER, model.positions.size() * sizeof(glm::vec3), &model.positions[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+		glGenBuffers(1, &plane.normalVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, plane.normalVBO);
+		glBufferData(GL_ARRAY_BUFFER, model.normals.size() * sizeof(glm::vec3), &model.normals[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+		glGenBuffers(1, &plane.texcoordVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, plane.texcoordVBO);
+		glBufferData(GL_ARRAY_BUFFER, model.texcoords.size() * sizeof(glm::vec2), &model.texcoords[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+
+		MTL material;
+		if (!LoadMTL((MODELS_FILEPATH + model.mtllib).c_str(), material))
+			throw std::runtime_error(std::string("Failed to load material: ") + model.mtllib);
+
+		gli::storage textureImage = gli::load_dds((TEXTURES_FILEPATH + material.map_Kd).c_str());
+		glGenTextures(1, &plane.texture);
+		glBindTexture(GL_TEXTURE_2D, plane.texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, textureImage.dimensions(0).x, textureImage.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage.data());
+
+		plane.perInstanceBufferData.modelMatrix = glm::translate(glm::vec3(0.0f, -4.0f, 0.0f)) * glm::scale(glm::vec3(5.0f));
+		plane.perInstanceBufferData.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(plane.perInstanceBufferData.modelMatrix))));
+		plane.perInstanceBufferData.materialSpecularColor = glm::vec4(material.Ks, material.Ns);
+
+		glGenBuffers(1, &plane.perInstanceBuffer);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, plane.perInstanceBuffer);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &plane.perInstanceBufferData, GL_STATIC_DRAW);
+	}
+	
+
+	// Compile the program.
 	vshader = CompileShaderFromFile((SHADERS_FILEPATH + VS_FILE).c_str(), GL_VERTEX_SHADER);
 	fshader = CompileShaderFromFile((SHADERS_FILEPATH + FS_FILE).c_str(), GL_FRAGMENT_SHADER);
 	
@@ -334,70 +421,67 @@ void InitializeScene()
 	glAttachShader(program, fshader);
 	LinkProgram(program);
 
-	glGenBuffers(1, &perFrameBuffer);
-	glGenBuffers(1, &perInstanceBuffer);
-	glGenBuffers(1, &constantBuffer);
-
-	MTL material;
-	if (!LoadMTL((MODELS_FILEPATH + model.mtllib).c_str(), material))
-		throw std::runtime_error(std::string("Failed to load material: ") + model.mtllib);
-
-	gli::storage crateImage = gli::load_dds((TEXTURES_FILEPATH + material.map_Kd).c_str());
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, crateImage.dimensions(0).x, crateImage.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, crateImage.data());
-
+	// Generate a texture sampler object.
 	glGenSamplers(1, &sampler);
 	glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	perInstance.modelMatrix = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
-	perInstance.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(perInstance.modelMatrix))));
-	perInstance.materialSpecularColor = glm::vec4(material.Ks, material.Ns);
-
+	// Setup the camera starting attributes.
 	camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
 	camera.SetPosition(glm::vec3(0, 0, 5));
 	camera.SetFacing(glm::vec3(0, 0, -1));
 	camera.RecalculateMatrices();
 
-	perFrame.viewMatrix = camera.GetView();
-	perFrame.projectionMatrix = camera.GetProjection();
-	perFrame.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
+	// Create and initialize the perFrame and constant uniform buffers.
+	glGenBuffers(1, &perFrameBuffer);
+	glGenBuffers(1, &constantBuffer);
 
-	constant.ambientLight.intensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
-	constant.directionalLights[0].directionW = glm::normalize(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-	constant.directionalLights[0].intensity = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f);
-	constant.pointLights[0].positionW = glm::vec4(0.0f, 5.0f, 5.0f, 1.0f);
-	constant.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
-	constant.pointLights[0].cutoff = 15.0f;
-	constant.spotLights[0].positionW = glm::vec4(0.0f, -5.0f, 5.0f, 1.0f);
-	constant.spotLights[0].directionW = glm::normalize(glm::vec4(0.0f, 1.0f, -1.0f, 1.0f));
-	constant.spotLights[0].intensity = glm::vec4(0.7f, 0.0f, 0.0f, 1.0f);
-	constant.spotLights[0].cutoff = 15.0f;
-	constant.spotLights[0].angle = glm::radians(45.0f);
+	perFrameBufferData.viewMatrix = camera.GetView();
+	perFrameBufferData.projectionMatrix = camera.GetProjection();
+	perFrameBufferData.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
+
+	constantBufferData.ambientLight.intensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	constantBufferData.directionalLights[0].directionW = glm::normalize(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+	constantBufferData.directionalLights[0].intensity = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f);
+	constantBufferData.pointLights[0].positionW = glm::vec4(0.0f, 5.0f, 5.0f, 1.0f);
+	constantBufferData.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
+	constantBufferData.pointLights[0].cutoff = 15.0f;
+	constantBufferData.spotLights[0].positionW = glm::vec4(0.0f, 10.0f, 7.5f, 1.0f);
+	constantBufferData.spotLights[0].directionW = glm::normalize(glm::vec4(0.0f, -1.0f, -1.0f, 1.0f));
+	constantBufferData.spotLights[0].intensity = glm::vec4(0.7f, 0.0f, 0.0f, 1.0f);
+	constantBufferData.spotLights[0].cutoff = 25.0f;
+	constantBufferData.spotLights[0].angle = glm::radians(45.0f);
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 2, constantBuffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constant, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constantBufferData, GL_STATIC_DRAW);
 }
 
 void CleanupScene()
 {
 	glDeleteSamplers(1, &sampler);
-	glDeleteTextures(1, &texture);
-	glDeleteBuffers(1, &perFrameBuffer);
-	glDeleteBuffers(1, &perInstanceBuffer);
-	glDeleteBuffers(1, &constantBuffer);
-	glDeleteBuffers(1, &position_vbo);
-	glDeleteBuffers(1, &normal_vbo);
-	glDeleteBuffers(1, &texcoord_vbo);
-	glDeleteVertexArrays(1, &vao);
 	glDetachShader(program, vshader);
 	glDetachShader(program, fshader);
 	glDeleteShader(vshader);
 	glDeleteShader(fshader);
 	glDeleteProgram(program);
+	glDeleteBuffers(1, &constantBuffer);
+	glDeleteBuffers(1, &perFrameBuffer);
+
+	glDeleteBuffers(1, &crate.positionVBO);
+	glDeleteBuffers(1, &crate.normalVBO);
+	glDeleteBuffers(1, &crate.texcoordVBO);
+	glDeleteBuffers(1, &crate.perInstanceBuffer);
+	glDeleteVertexArrays(1, &crate.vao);
+	glDeleteTextures(1, &crate.texture);
+
+	glDeleteBuffers(1, &plane.positionVBO);
+	glDeleteBuffers(1, &plane.normalVBO);
+	glDeleteBuffers(1, &plane.texcoordVBO);
+	glDeleteBuffers(1, &plane.perInstanceBuffer);
+	glDeleteVertexArrays(1, &plane.vao);
+	glDeleteTextures(1, &plane.texture);
 }
 
 bool HandleEvents()
@@ -481,6 +565,7 @@ void HandleCamera(float dt)
 
 		yaw -= dx * sensitivity;
 		pitch += dy * sensitivity;
+		pitch = glm::clamp(pitch, 0.01f,  3.13f);
 
 		float h = std::sin(pitch);
 		facing.x = h * std::cos(yaw);

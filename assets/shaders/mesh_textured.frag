@@ -83,9 +83,12 @@ void main()
         diffuse += diffuseCoefficient * surfaceColor * directionalLights[i].intensity.rgb;
 
 		// Specular lighting
-		vec3 halfway = normalize(surfaceToCamera - directionalLights[i].directionW.xyz);
-        float specularCoefficient = pow(max(0.0f, dot(vs_normalW, halfway)), materialSpecularColor.a);
-        specular += specularCoefficient * materialSpecularColor.rgb * directionalLights[i].intensity.rgb;
+		if (diffuseCoefficient > 0.0f)
+		{
+			vec3 halfway = normalize(surfaceToCamera - directionalLights[i].directionW.xyz);
+			float specularCoefficient = pow(max(0.0f, dot(vs_normalW, halfway)), materialSpecularColor.a);
+			specular += specularCoefficient * materialSpecularColor.rgb * directionalLights[i].intensity.rgb;
+		}
 	}
 
     // Point lights
@@ -93,16 +96,19 @@ void main()
     {
         vec3 surfaceToLight = pointLights[i].positionW.xyz - vs_positionW;
         float surfaceToLightDistance = length(surfaceToLight);
-        float attenuation = (pointLights[i].cutoff - surfaceToLightDistance) / pointLights[i].cutoff;
+        float attenuation = max(0.0f, pointLights[i].cutoff - surfaceToLightDistance) / pointLights[i].cutoff;
 
         // Diffuse lighting
         float diffuseCoefficient = max(0.0f, dot(vs_normalW, surfaceToLight)) / surfaceToLightDistance;
         diffuse += attenuation * diffuseCoefficient * surfaceColor * pointLights[i].intensity.rgb;
 
         // Specular lighting
-        vec3 halfway = normalize(surfaceToCamera + surfaceToLight);
-        float specularCoefficient = pow(max(0.0f, dot(vs_normalW, halfway)), materialSpecularColor.a);
-        specular += attenuation * specularCoefficient * materialSpecularColor.rgb * pointLights[i].intensity.rgb;
+		if (diffuseCoefficient > 0.0f)
+		{
+			vec3 halfway = normalize(surfaceToCamera + surfaceToLight);
+			float specularCoefficient = pow(max(0.0f, dot(vs_normalW, halfway)), materialSpecularColor.a);
+			specular += attenuation * specularCoefficient * materialSpecularColor.rgb * pointLights[i].intensity.rgb;
+		}
     }
 
 	// Spot lights
@@ -114,16 +120,19 @@ void main()
 		
 		if (angle <= spotLights[i].angle)
 		{
-			float attenuation = (spotLights[i].cutoff - surfaceToLightDistance) / spotLights[i].cutoff;
+			float attenuation = max(0.0f, spotLights[i].cutoff - surfaceToLightDistance) / spotLights[i].cutoff;
 			
 			// Diffuse lighting
 			float diffuseCoefficient = max(0.0f, dot(vs_normalW, surfaceToLight)) / surfaceToLightDistance;
 			diffuse += attenuation * diffuseCoefficient * surfaceColor * spotLights[i].intensity.rgb;
 		
 			// Specular lighting
-			vec3 halfway = normalize(surfaceToCamera + surfaceToLight);
-			float specularCoefficient = pow(max(0.0f, dot(vs_normalW, halfway)), materialSpecularColor.a);
-			specular += attenuation * specularCoefficient * materialSpecularColor.rgb * spotLights[i].intensity.rgb;
+			if (diffuseCoefficient > 0.0f)
+			{
+				vec3 halfway = normalize(surfaceToCamera + surfaceToLight);
+				float specularCoefficient = pow(max(0.0f, dot(vs_normalW, halfway)), materialSpecularColor.a);
+				specular += attenuation * specularCoefficient * materialSpecularColor.rgb * spotLights[i].intensity.rgb;
+			}
 		}
     }
 

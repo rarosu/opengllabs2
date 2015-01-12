@@ -41,7 +41,7 @@ const glm::vec3& Camera::GetFacing() const
 
 glm::vec3 Camera::GetRight() const
 {
-	return glm::cross(facing, glm::vec3(0, 1, 0));
+	return glm::normalize(glm::cross(facing, glm::vec3(0, 1, 0)));
 }
 
 const glm::mat4& Camera::GetView() const

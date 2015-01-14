@@ -94,7 +94,7 @@ void main()
     }
 
 	// Spot lights (index 0 is shadowmapped)
-	vec2 shadowmapTexcoords = vec2(vs_positionL.x, 1.0f - vs_positionL.y);
+	vec2 shadowmapTexcoords = vec2(vs_positionL.s, vs_positionL.t);
 	if (shadowmapTexcoords.s < 0.0f || shadowmapTexcoords.s > 1.0f || shadowmapTexcoords.t < 0.0f || shadowmapTexcoords.t > 1.0f)
 	{
 		// Do light calculations as we are outside the shadowmap.
@@ -102,7 +102,7 @@ void main()
 	}
 	else
 	{
-		if (vs_positionL.z < texture(samplerShadowmap, shadowmapTexcoords).r)
+		if (vs_positionL.z - 0.001f < texture(samplerShadowmap, shadowmapTexcoords).r)
 		{
 			// Do light calculations as we are in front of occluding geometry.
 			AddSpotLightContribution(spotLights[0], surfaceColor, surfaceToCamera, diffuse, specular);
@@ -117,7 +117,7 @@ void main()
     out_color = vec4(ambient + diffuse + specular, 1.0f);
 	//out_color = texture(samplerDiffuse, vs_texcoord);
 	//out_color = vec4(vec3(vs_positionL.z), 1.0f);
-	//out_color = vec4(vec3(texture(samplerShadowmap, shadowmapTexcoords).r + 0.5), 1.0f);
+	//out_color = vec4(vec3(texture(samplerShadowmap, shadowmapTexcoords).r), 1.0f);
 }
 
 

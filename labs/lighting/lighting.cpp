@@ -25,6 +25,7 @@ const float PERSPECTIVE_FAR = 100.0f;
 const float PERSPECTIVE_FOV = glm::radians(75.0f);
 
 const std::string ASSETS_FILEPATH = "../../../assets/";
+//const std::string ASSETS_FILEPATH = "../assets/";
 const std::string FONTS_FILEPATH = ASSETS_FILEPATH + "fonts/";
 const std::string MODELS_FILEPATH = ASSETS_FILEPATH + "models/";
 const std::string SHADERS_FILEPATH = ASSETS_FILEPATH + "shaders/";
@@ -184,8 +185,10 @@ bool HandleEvents();
 void CleanupScene();
 void HandleCamera(float dt);
 
-int main()
+int main(int argc, char* argv[])
 {
+	std::cout << argv[0] << std::endl;
+
 	int result = 0;
 	try
 	{
@@ -258,7 +261,7 @@ int main()
 			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrameBufferData, GL_DYNAMIC_DRAW);
 			
 			glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_SHADOWMAP);
-			glBindSampler(TEXTURE_UNIT_DIFFUSE, spotShadowDepthSampler);
+			glBindSampler(TEXTURE_UNIT_SHADOWMAP, spotShadowDepthSampler);
 			glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
 
 			glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_DIFFUSE);
@@ -273,8 +276,8 @@ int main()
 
 			// Render the plane.
 			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, plane.perInstanceBuffer);
-			//glBindTexture(GL_TEXTURE_2D, plane.texture);
-			glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
+			glBindTexture(GL_TEXTURE_2D, plane.texture);
+			//glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
 			glBindVertexArray(plane.vao);
 			glDrawArrays(GL_TRIANGLES, 0, plane.vertexCount);
 
@@ -351,6 +354,8 @@ void InitializeContext()
 	{
 		throw std::runtime_error(std::string("Failed to initialize GLEW: ") + (const char*) glewGetErrorString(glewResult));
 	}
+	glGetError(); // Clear the error buffer caused by GLEW.
+
 
 	glDebugMessageCallback(OutputDebugMessage, nullptr);
 
@@ -379,12 +384,12 @@ void InitializeContext()
 
 	if (FT_New_Face(ft, (FONTS_FILEPATH + FONT_FILE).c_str(), 0, &face) != 0)
 	{
-		throw std::runtime_error(std::string("Failed to load face: ") + FONT_FILE);
+		throw std::runtime_error(std::string("Failed to load face: ") + FONTS_FILEPATH + FONT_FILE);
 	}
 
 	if (FT_Set_Pixel_Sizes(face, 0, 48) != 0)
 	{
-		throw std::runtime_error(std::string("Failed to load face: ") + FONT_FILE);
+		throw std::runtime_error(std::string("Failed to load face: ") + FONTS_FILEPATH + FONT_FILE);
 	}
 }
 
@@ -394,7 +399,7 @@ void InitializeScene()
 	{
 		OBJ model;
 		if (!LoadOBJ((MODELS_FILEPATH + CRATE_MODEL_FILE).c_str(), model))
-			throw std::runtime_error(std::string("Failed to load model: ") + CRATE_MODEL_FILE);
+			throw std::runtime_error(std::string("Failed to load model: ") + MODELS_FILEPATH + CRATE_MODEL_FILE);
 
 		crate.vertexCount = (GLuint)model.positions.size();
 
@@ -440,7 +445,7 @@ void InitializeScene()
 	{
 		OBJ model;
 		if (!LoadOBJ((MODELS_FILEPATH + PLANE_MODEL_FILE).c_str(), model))
-			throw std::runtime_error(std::string("Failed to load model: ") + PLANE_MODEL_FILE);
+			throw std::runtime_error(std::string("Failed to load model: ") + MODELS_FILEPATH + PLANE_MODEL_FILE);
 
 		plane.vertexCount = (GLuint)model.positions.size();
 

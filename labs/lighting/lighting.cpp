@@ -55,6 +55,10 @@ const int SHADOWMAP_HEIGHT = 1024;
 const float SHADOWMAP_NEAR = 0.5f;
 const float SHADOWMAP_FAR = 100.0f;
 
+const float SPOT_LIGHT_ANGULAR_VELOCITY = 0.4f;
+const float SPOT_LIGHT_RADIUS = 10.0f;
+const float SPOT_LIGHT_HEIGHT = 0.0f;
+
 struct InputState
 {
 	InputState()
@@ -177,6 +181,8 @@ PerFrameUniformBuffer perFrameBufferData;
 PerShadowcasterUniformBuffer perShadowcasterBufferData;
 Camera camera;
 float crateAngle = 0.0f;
+float spotLightPositionAngle = 0.0f;
+bool spotLightFlashlightMode = true;
 
 void GLAPIENTRY OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param);
 void InitializeContext();
@@ -184,6 +190,7 @@ void InitializeScene();
 bool HandleEvents();
 void CleanupScene();
 void HandleCamera(float dt);
+void UpdateSpotLight(float dt);
 
 int main(int argc, char* argv[])
 {
@@ -214,11 +221,16 @@ int main(int argc, char* argv[])
 			perFrameBufferData.projectionMatrix = camera.GetProjection();
 			perFrameBufferData.cameraPositionW = glm::vec4(camera.GetPosition(), 1.0f);
 
+			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_FRAME, perFrameBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrameBufferData, GL_DYNAMIC_DRAW);
+
 			// Update the crate.
-			crateAngle += dt * CRATE_ANGULAR_VELOCITY;
+			//crateAngle += dt * CRATE_ANGULAR_VELOCITY;
 			crate.perInstanceBufferData.modelMatrix = glm::rotate(crateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
 			crate.perInstanceBufferData.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(crate.perInstanceBufferData.modelMatrix))));
 
+			// Update the spot light.
+			UpdateSpotLight(dt);
 
 			// Render to shadowmapping depth textures.
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, spotShadowDepthFBO);
@@ -246,8 +258,6 @@ int main(int argc, char* argv[])
 			
 
 
-
-
 			// Render the scene.
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 			glViewport(0, 0, viewportWidth, viewportHeight);
@@ -256,9 +266,6 @@ int main(int argc, char* argv[])
 			
 			
 			glUseProgram(program);
-
-			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_FRAME, perFrameBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrameBufferData, GL_DYNAMIC_DRAW);
 			
 			glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_SHADOWMAP);
 			glBindSampler(TEXTURE_UNIT_SHADOWMAP, spotShadowDepthSampler);
@@ -311,7 +318,7 @@ int main(int argc, char* argv[])
 
 void GLAPIENTRY OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
 {
-	std::cout << message << std::endl;
+	//std::cout << message << std::endl;
 }
 
 void InitializeContext()
@@ -362,7 +369,7 @@ void InitializeContext()
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, viewportWidth, viewportHeight);
 
-	//glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glClearDepth(1.0f);
 
@@ -527,14 +534,12 @@ void InitializeScene()
 	constantBufferData.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
 	constantBufferData.pointLights[0].cutoff = 15.0f;
 	constantBufferData.spotLights[0].angle = glm::radians(40.0f);
-	constantBufferData.spotLights[0].positionW = glm::vec4(0.0f, 5.0f, 0.0f, 1.0f);
-	constantBufferData.spotLights[0].directionW = glm::normalize(glm::vec4(0.0f, -1.0f, 0.0f, 0.0f));
 	constantBufferData.spotLights[0].intensity = glm::vec4(0.7f, 0.0f, 0.0f, 1.0f);
 	constantBufferData.spotLights[0].cutoff = 50.0f;
 	
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, constantBuffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constantBufferData, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constantBufferData, GL_DYNAMIC_DRAW);
 
 
 
@@ -566,26 +571,19 @@ void InitializeScene()
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-	spotDepthViewMatrix = glm::lookAt(glm::vec3(constantBufferData.spotLights[0].positionW), 
-									  glm::vec3(constantBufferData.spotLights[0].positionW + constantBufferData.spotLights[0].directionW), 
-									  glm::vec3(0.1f, 1.0f, 0.0f));
+	// Setup starting spot light values.
+	UpdateSpotLight(0.0f);
 	
-	//spotDepthProjectionMatrix = glm::perspectiveFov(constantBufferData.spotLights[0].angle, (float)SHADOWMAP_WIDTH, (float)SHADOWMAP_HEIGHT, SHADOWMAP_NEAR, SHADOWMAP_FAR);
 	spotDepthProjectionMatrix = Camera::GetPerspectiveProjection(SHADOWMAP_NEAR, SHADOWMAP_FAR, 2.0f * constantBufferData.spotLights[0].angle, (float)SHADOWMAP_WIDTH, (float)SHADOWMAP_HEIGHT);
-	
-	/*
-	float aspect = (float) SHADOWMAP_HEIGHT / (float) SHADOWMAP_WIDTH;
-	float fovScale = 1.0f / std::tan(constantBufferData.spotLights[0].angle);
-	
-	spotDepthProjectionMatrix = glm::mat4(0);
-	spotDepthProjectionMatrix[0][0] = fovScale * aspect;
-	spotDepthProjectionMatrix[1][1] = fovScale;
-	spotDepthProjectionMatrix[2][2] = (SHADOWMAP_NEAR + SHADOWMAP_FAR) / (SHADOWMAP_NEAR - SHADOWMAP_FAR);
-	spotDepthProjectionMatrix[3][2] = 2.0f * SHADOWMAP_NEAR * SHADOWMAP_FAR / (SHADOWMAP_NEAR - SHADOWMAP_FAR);
-	spotDepthProjectionMatrix[2][3] = -1.0f;
-	*/
-	
 
+	spotDepthBiasMatrix = glm::mat4(
+		0.5, 0.0, 0.0, 0.0,
+		0.0, 0.5, 0.0, 0.0,
+		0.0, 0.0, 0.5, 0.0,
+		0.5, 0.5, 0.5, 1.0
+	);
+
+	/*
 	spotDepthBiasMatrix = glm::mat4(1);
 	spotDepthBiasMatrix[0][0] = 0.5f;
 	spotDepthBiasMatrix[1][1] = 0.5f;
@@ -593,26 +591,7 @@ void InitializeScene()
 	spotDepthBiasMatrix[3][0] = 0.5f;
 	spotDepthBiasMatrix[3][1] = 0.5f;
 	spotDepthBiasMatrix[3][2] = 0.5f;
-
-	glm::vec4 corners[] = { glm::vec4(-1.0f, +1.0f, -1.0f, 1.0f),
-							glm::vec4(+1.0f, +1.0f, -1.0f, 1.0f), 
-							glm::vec4(+1.0f, +1.0f, +1.0f, 1.0f), 
-							glm::vec4(-1.0f, +1.0f, +1.0f, 1.0f) };
-
-	for (int i = 0; i < 4; ++i)
-	{
-		//glm::vec4 ppos = spotDepthBiasMatrix * spotDepthProjectionMatrix * spotDepthViewMatrix * corners[i];
-		glm::vec4 posV = spotDepthViewMatrix * corners[i];
-		glm::vec4 posC = spotDepthProjectionMatrix * posV;
-		glm::vec4 posN = posC / posC.w;
-		//glm::vec4 posBias = spotDepthBiasMatrix * spotDepthProjectionMatrix * spotDepthViewMatrix * corners[i];
-		//glm::vec4 posN = posBias / posBias.w;
-
-		std::cout << "Crate corner (" << corners[i].x << ", " << corners[i].y << ", " << corners[i].z << ", " << corners[i].w << ")" << std::endl;
-		std::cout << "\tLight View Space: (" << posV.x << ", " << posV.y << ", " << posV.z << ", " << posV.w << ")" << std::endl;
-		std::cout << "\tLight Clip Space: (" << posC.x << ", " << posC.y << ", " << posC.z << ", " << posC.w << ")" << std::endl;
-		std::cout << "\tLight NDC (Shadowmap Coordinate) Space: (" << posN.x << ", " << posN.y << ", " << posN.z << ", " << posN.w << ")" << std::endl;
-	}
+	*/
 
 	glGenBuffers(1, &perShadowcasterBuffer);
 
@@ -752,4 +731,38 @@ void HandleCamera(float dt)
 		displacement += camera.GetRight() * speed;
 
 	camera.SetPosition(displacement);
+}
+
+void UpdateSpotLight(float dt)
+{
+	if (currentInput.keys[SDL_SCANCODE_F] && !previousInput.keys[SDL_SCANCODE_F])
+		spotLightFlashlightMode = !spotLightFlashlightMode;
+
+	if (spotLightFlashlightMode)
+	{
+		constantBufferData.spotLights[0].positionW = glm::vec4(camera.GetPosition(), 1.0f);
+		constantBufferData.spotLights[0].directionW = glm::vec4(camera.GetFacing(), 1.0f);
+
+		spotDepthViewMatrix = glm::lookAt(glm::vec3(constantBufferData.spotLights[0].positionW),
+										  glm::vec3(constantBufferData.spotLights[0].positionW + constantBufferData.spotLights[0].directionW),
+										  glm::vec3(0.1f, 1.0f, 0.0f));
+	
+		// Not so constant anymore...
+		glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, constantBuffer);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constantBufferData, GL_DYNAMIC_DRAW);
+	}
+	
+
+	
+	/*
+	spotLightPositionAngle += SPOT_LIGHT_ANGULAR_VELOCITY * dt;
+	constantBufferData.spotLights[0].positionW.x = SPOT_LIGHT_RADIUS * cos(spotLightPositionAngle);
+	constantBufferData.spotLights[0].positionW.y = SPOT_LIGHT_HEIGHT;
+	constantBufferData.spotLights[0].positionW.z = -SPOT_LIGHT_RADIUS * sin(spotLightPositionAngle);
+	constantBufferData.spotLights[0].directionW = glm::normalize(-constantBufferData.spotLights[0].positionW);
+	//constantBufferData.spotLights[0].directionW = glm::vec4(0.0f, -1.0f, 0.0f, 1.0f);
+	*/
+	
+	//camera.SetPosition(glm::vec3(constantBufferData.spotLights[0].positionW));
+	//camera.SetFacing(glm::vec3(constantBufferData.spotLights[0].directionW));
 }

@@ -36,8 +36,8 @@ void main()
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_positionM, 1.0f);
 	vs_positionW = (modelMatrix * vec4(in_positionM, 1.0f)).xyz;
 	vs_positionL = lightProjectionViewMatrix * modelMatrix * vec4(in_positionM, 1.0f);
-	vs_positionL /= vs_positionL.w;
 	vs_positionL = lightBiasMatrix * vs_positionL;
+	//vs_positionL /= vs_positionL.w;
 	vs_normalW = normalize(mat3(normalMatrix) * in_normalM);
 	vs_texcoord = in_texcoord;
 }

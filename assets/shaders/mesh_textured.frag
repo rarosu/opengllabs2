@@ -94,15 +94,17 @@ void main()
     }
 
 	// Spot lights (index 0 is shadowmapped)
-	vec2 shadowmapTexcoords = vec2(vs_positionL.s, vs_positionL.t);
-	if (shadowmapTexcoords.s < 0.0f || shadowmapTexcoords.s > 1.0f || shadowmapTexcoords.t < 0.0f || shadowmapTexcoords.t > 1.0f)
+	vec4 posL = vs_positionL / vs_positionL.w;
+	//vec2 shadowmapTexcoords = vec2((vs_positionL.s + 1.0) * 0.5, (vs_positionL.t + 1.0) * 0.5);
+	vec2 shadowmapTexcoords = vec2(posL.s, posL.t);
+	if (shadowmapTexcoords.x < 0.0f || shadowmapTexcoords.x > 1.0f || shadowmapTexcoords.y < 0.0f || shadowmapTexcoords.y > 1.0f || posL.z < 0.0f || posL.z > 1.0f)
 	{
 		// Do light calculations as we are outside the shadowmap.
-		AddSpotLightContribution(spotLights[0], surfaceColor, surfaceToCamera, diffuse, specular);
+		//AddSpotLightContribution(spotLights[0], surfaceColor, surfaceToCamera, diffuse, specular);
 	}
 	else
 	{
-		if (vs_positionL.z - 0.001f < texture(samplerShadowmap, shadowmapTexcoords).r)
+		if (posL.z - 0.001f < texture(samplerShadowmap, shadowmapTexcoords).r)
 		{
 			// Do light calculations as we are in front of occluding geometry.
 			AddSpotLightContribution(spotLights[0], surfaceColor, surfaceToCamera, diffuse, specular);

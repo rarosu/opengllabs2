@@ -40,6 +40,9 @@ const int DIRECTIONAL_LIGHT_COUNT = 1;
 const int POINT_LIGHT_COUNT = 1;
 const int SPOT_LIGHT_COUNT = 1;
 
+const int SHADOWMAP_WIDTH = 1024;
+const int SHADOWMAP_HEIGHT = 1024;
+
 struct InputState
 {
 	InputState()
@@ -139,6 +142,9 @@ GLuint perFrameBuffer = 0;
 GLuint constantBuffer = 0;
 GLuint sampler = 0;
 GLuint textureUnit = 0;
+GLuint spotShadowDepthTexture = 0;
+GLuint spotShadowDepthSampler = 0;
+GLuint spotShadowDepthFBO = 0;
 ConstantBuffer constantBufferData;
 PerFrameUniformBuffer perFrameBufferData;
 Camera camera;
@@ -456,6 +462,26 @@ void InitializeScene()
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 2, constantBuffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constantBufferData, GL_STATIC_DRAW);
+
+	// Setup shadowmapping
+	glGenTextures(1, &spotShadowDepthTexture);
+	glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+	glGenSamplers(1, &spotShadowDepthSampler);
+	glSamplerParameteri(spotShadowDepthSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glSamplerParameteri(spotShadowDepthSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glSamplerParameteri(spotShadowDepthSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glSamplerParameteri(spotShadowDepthSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glGenFramebuffers(1, &spotShadowDepthFBO);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, spotShadowDepthFBO);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, spotShadowDepthTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		throw std::runtime_error("Failed to create spot light shadow depth FBO");
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
 void CleanupScene()

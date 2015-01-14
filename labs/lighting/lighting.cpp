@@ -34,14 +34,25 @@ const std::string CRATE_MODEL_FILE = "crate.obj";
 const std::string PLANE_MODEL_FILE = "plane.obj";
 const std::string VS_FILE = "mesh_textured.vert";
 const std::string FS_FILE = "mesh_textured.frag";
+const std::string DEPTH_VS_FILE = "depth.vert";
+const std::string DEPTH_FS_FILE = "depth.frag";
 
 const float CRATE_ANGULAR_VELOCITY = 1.0f;
 const int DIRECTIONAL_LIGHT_COUNT = 1;
 const int POINT_LIGHT_COUNT = 1;
 const int SPOT_LIGHT_COUNT = 1;
 
+const int UNIFORM_BINDING_CONSTANT = 0;
+const int UNIFORM_BINDING_FRAME = 1;
+const int UNIFORM_BINDING_INSTANCE = 2;
+const int UNIFORM_BINDING_SHADOWCASTER = 3;
+const int TEXTURE_UNIT_DIFFUSE = 0;
+const int TEXTURE_UNIT_SHADOWMAP = 1;
+
 const int SHADOWMAP_WIDTH = 1024;
 const int SHADOWMAP_HEIGHT = 1024;
+const float SHADOWMAP_NEAR = 0.5f;
+const float SHADOWMAP_FAR = 100.0f;
 
 struct InputState
 {
@@ -90,6 +101,14 @@ struct SpotLight
 	float padding[2];
 };
 
+struct ConstantBuffer
+{
+	AmbientLight ambientLight;
+	DirectionalLight directionalLights[DIRECTIONAL_LIGHT_COUNT];
+	PointLight pointLights[POINT_LIGHT_COUNT];
+	SpotLight spotLights[SPOT_LIGHT_COUNT];
+};
+
 struct PerFrameUniformBuffer
 {
 	glm::mat4 viewMatrix;
@@ -106,12 +125,10 @@ struct PerInstanceUniformBuffer
 	glm::vec4 materialSpecularColor;
 };
 
-struct ConstantBuffer
+struct PerShadowcasterUniformBuffer
 {
-	AmbientLight ambientLight;
-	DirectionalLight directionalLights[DIRECTIONAL_LIGHT_COUNT];
-	PointLight pointLights[POINT_LIGHT_COUNT];
-	SpotLight spotLights[SPOT_LIGHT_COUNT];
+	glm::mat4 lightProjectionViewWorldMatrix;
+	glm::mat4 lightBiasMatrix;
 };
 
 struct Entity
@@ -131,6 +148,8 @@ FT_Face face = nullptr;
 SDL_Window* window = nullptr;
 SDL_GLContext context = nullptr;
 
+int viewportWidth = VIEWPORT_WIDTH;
+int viewportHeight = VIEWPORT_HEIGHT;
 InputState previousInput;
 InputState currentInput;
 Entity crate;
@@ -142,11 +161,19 @@ GLuint perFrameBuffer = 0;
 GLuint constantBuffer = 0;
 GLuint sampler = 0;
 GLuint textureUnit = 0;
+GLuint vshaderDepth = 0;
+GLuint fshaderDepth = 0;
+GLuint programDepth = 0;
 GLuint spotShadowDepthTexture = 0;
 GLuint spotShadowDepthSampler = 0;
 GLuint spotShadowDepthFBO = 0;
+glm::mat4 spotDepthViewMatrix;
+glm::mat4 spotDepthProjectionMatrix;
+glm::mat4 spotDepthBiasMatrix;
+GLuint perShadowcasterBuffer = 0;
 ConstantBuffer constantBufferData;
 PerFrameUniformBuffer perFrameBufferData;
+PerShadowcasterUniformBuffer perShadowcasterBufferData;
 Camera camera;
 float crateAngle = 0.0f;
 
@@ -189,28 +216,68 @@ int main()
 			crate.perInstanceBufferData.modelMatrix = glm::rotate(crateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
 			crate.perInstanceBufferData.normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(crate.perInstanceBufferData.modelMatrix))));
 
+
+			// Render to shadowmapping depth textures.
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, spotShadowDepthFBO);
+			glViewport(0, 0, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
+			glDrawBuffer(GL_NONE);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			
+			glUseProgram(programDepth);
+			
+			perShadowcasterBufferData.lightProjectionViewWorldMatrix = spotDepthProjectionMatrix * spotDepthViewMatrix;
+			perShadowcasterBufferData.lightBiasMatrix = spotDepthBiasMatrix;
+			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_SHADOWCASTER, perShadowcasterBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerShadowcasterUniformBuffer), &perShadowcasterBufferData, GL_DYNAMIC_DRAW);
+
+			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, crate.perInstanceBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &crate.perInstanceBufferData, GL_DYNAMIC_DRAW);
+
+			// Render the crate depth (enable only position attributes).
+			glBindVertexArray(crate.vao);
+			glDisableVertexAttribArray(1);
+			glDisableVertexAttribArray(2);
+			glDrawArrays(GL_TRIANGLES, 0, crate.vertexCount);
+			glEnableVertexAttribArray(1);
+			glEnableVertexAttribArray(2);
+			
+
+
+
+
 			// Render the scene.
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+			glViewport(0, 0, viewportWidth, viewportHeight);
+			glDrawBuffer(GL_BACK);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			
+			
 			glUseProgram(program);
-			glBindBufferBase(GL_UNIFORM_BUFFER, 0, perFrameBuffer);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrameBufferData, GL_DYNAMIC_DRAW);
 
-			glActiveTexture(GL_TEXTURE0 + textureUnit);
-			glBindSampler(textureUnit, sampler);
+			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_FRAME, perFrameBuffer);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerFrameUniformBuffer), &perFrameBufferData, GL_DYNAMIC_DRAW);
+			
+			glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_SHADOWMAP);
+			glBindSampler(TEXTURE_UNIT_DIFFUSE, spotShadowDepthSampler);
+			glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
+
+			glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_DIFFUSE);
+			glBindSampler(TEXTURE_UNIT_DIFFUSE, sampler);
 
 			// Render the crate.
-			glBindBufferBase(GL_UNIFORM_BUFFER, 1, crate.perInstanceBuffer);
+			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, crate.perInstanceBuffer);
 			glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &crate.perInstanceBufferData, GL_DYNAMIC_DRAW);
 			glBindTexture(GL_TEXTURE_2D, crate.texture);
 			glBindVertexArray(crate.vao);
 			glDrawArrays(GL_TRIANGLES, 0, crate.vertexCount);
 
 			// Render the plane.
-			glBindBufferBase(GL_UNIFORM_BUFFER, 1, plane.perInstanceBuffer);
-			glBindTexture(GL_TEXTURE_2D, plane.texture);
+			glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, plane.perInstanceBuffer);
+			//glBindTexture(GL_TEXTURE_2D, plane.texture);
+			glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
 			glBindVertexArray(plane.vao);
 			glDrawArrays(GL_TRIANGLES, 0, plane.vertexCount);
+
 
 			SDL_GL_SwapWindow(window);
 		}
@@ -258,7 +325,7 @@ void InitializeContext()
 
 	window = SDL_CreateWindow("Texturing & Lighting", 
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-		VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+		viewportWidth, viewportHeight,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if (window == nullptr)
 	{
@@ -287,8 +354,8 @@ void InitializeContext()
 
 	glDebugMessageCallback(OutputDebugMessage, nullptr);
 
-	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glViewport(0, 0, viewportWidth, viewportHeight);
 
 	//glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
@@ -413,7 +480,7 @@ void InitializeScene()
 		plane.perInstanceBufferData.materialSpecularColor = glm::vec4(material.Ks, material.Ns);
 
 		glGenBuffers(1, &plane.perInstanceBuffer);
-		glBindBufferBase(GL_UNIFORM_BUFFER, 1, plane.perInstanceBuffer);
+		glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, plane.perInstanceBuffer);
 		glBufferData(GL_UNIFORM_BUFFER, sizeof(PerInstanceUniformBuffer), &plane.perInstanceBufferData, GL_STATIC_DRAW);
 	}
 	
@@ -436,8 +503,8 @@ void InitializeScene()
 
 	// Setup the camera starting attributes.
 	camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)VIEWPORT_WIDTH, (float)VIEWPORT_HEIGHT));
-	camera.SetPosition(glm::vec3(0, 0, 5));
-	camera.SetFacing(glm::vec3(0, 0, -1));
+	camera.SetPosition(glm::vec3(0, 5.0f, 5.0f));
+	camera.SetFacing(glm::vec3(0, 0, -1.0f));
 	camera.RecalculateMatrices();
 
 	// Create and initialize the perFrame and constant uniform buffers.
@@ -454,16 +521,27 @@ void InitializeScene()
 	constantBufferData.pointLights[0].positionW = glm::vec4(0.0f, 5.0f, 5.0f, 1.0f);
 	constantBufferData.pointLights[0].intensity = glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
 	constantBufferData.pointLights[0].cutoff = 15.0f;
-	constantBufferData.spotLights[0].positionW = glm::vec4(0.0f, 10.0f, 7.5f, 1.0f);
-	constantBufferData.spotLights[0].directionW = glm::normalize(glm::vec4(0.0f, -1.0f, -1.0f, 1.0f));
+	constantBufferData.spotLights[0].angle = glm::radians(40.0f);
+	constantBufferData.spotLights[0].positionW = glm::vec4(0.0f, 5.0f, 0.0f, 1.0f);
+	constantBufferData.spotLights[0].directionW = glm::normalize(glm::vec4(0.0f, -1.0f, 0.0f, 0.0f));
 	constantBufferData.spotLights[0].intensity = glm::vec4(0.7f, 0.0f, 0.0f, 1.0f);
-	constantBufferData.spotLights[0].cutoff = 25.0f;
-	constantBufferData.spotLights[0].angle = glm::radians(45.0f);
+	constantBufferData.spotLights[0].cutoff = 50.0f;
+	
 
-	glBindBufferBase(GL_UNIFORM_BUFFER, 2, constantBuffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, constantBuffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(ConstantBuffer), &constantBufferData, GL_STATIC_DRAW);
 
-	// Setup shadowmapping
+
+
+	// Setup shadowmapping resources.
+	vshaderDepth = CompileShaderFromFile((SHADERS_FILEPATH + DEPTH_VS_FILE).c_str(), GL_VERTEX_SHADER);
+	fshaderDepth = CompileShaderFromFile((SHADERS_FILEPATH + DEPTH_FS_FILE).c_str(), GL_FRAGMENT_SHADER);
+
+	programDepth = glCreateProgram();
+	glAttachShader(programDepth, vshaderDepth);
+	glAttachShader(programDepth, fshaderDepth);
+	LinkProgram(programDepth);
+
 	glGenTextures(1, &spotShadowDepthTexture);
 	glBindTexture(GL_TEXTURE_2D, spotShadowDepthTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
@@ -482,10 +560,65 @@ void InitializeScene()
 		throw std::runtime_error("Failed to create spot light shadow depth FBO");
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+	spotDepthViewMatrix = glm::lookAt(glm::vec3(constantBufferData.spotLights[0].positionW), 
+									  glm::vec3(constantBufferData.spotLights[0].positionW + constantBufferData.spotLights[0].directionW), 
+									  glm::vec3(0.1f, 1.0f, 0.0f));
+	
+	//spotDepthProjectionMatrix = glm::perspectiveFov(constantBufferData.spotLights[0].angle, (float)SHADOWMAP_WIDTH, (float)SHADOWMAP_HEIGHT, SHADOWMAP_NEAR, SHADOWMAP_FAR);
+	spotDepthProjectionMatrix = Camera::GetPerspectiveProjection(SHADOWMAP_NEAR, SHADOWMAP_FAR, 2.0f * constantBufferData.spotLights[0].angle, (float)SHADOWMAP_WIDTH, (float)SHADOWMAP_HEIGHT);
+	
+	/*
+	float aspect = (float) SHADOWMAP_HEIGHT / (float) SHADOWMAP_WIDTH;
+	float fovScale = 1.0f / std::tan(constantBufferData.spotLights[0].angle);
+	
+	spotDepthProjectionMatrix = glm::mat4(0);
+	spotDepthProjectionMatrix[0][0] = fovScale * aspect;
+	spotDepthProjectionMatrix[1][1] = fovScale;
+	spotDepthProjectionMatrix[2][2] = (SHADOWMAP_NEAR + SHADOWMAP_FAR) / (SHADOWMAP_NEAR - SHADOWMAP_FAR);
+	spotDepthProjectionMatrix[3][2] = 2.0f * SHADOWMAP_NEAR * SHADOWMAP_FAR / (SHADOWMAP_NEAR - SHADOWMAP_FAR);
+	spotDepthProjectionMatrix[2][3] = -1.0f;
+	*/
+	
+
+	spotDepthBiasMatrix = glm::mat4(1);
+	spotDepthBiasMatrix[0][0] = 0.5f;
+	spotDepthBiasMatrix[1][1] = 0.5f;
+	spotDepthBiasMatrix[2][2] = 0.5f;
+	spotDepthBiasMatrix[3][0] = 0.5f;
+	spotDepthBiasMatrix[3][1] = 0.5f;
+	spotDepthBiasMatrix[3][2] = 0.5f;
+
+	glm::vec4 corners[] = { glm::vec4(-1.0f, +1.0f, -1.0f, 1.0f),
+							glm::vec4(+1.0f, +1.0f, -1.0f, 1.0f), 
+							glm::vec4(+1.0f, +1.0f, +1.0f, 1.0f), 
+							glm::vec4(-1.0f, +1.0f, +1.0f, 1.0f) };
+
+	for (int i = 0; i < 4; ++i)
+	{
+		//glm::vec4 ppos = spotDepthBiasMatrix * spotDepthProjectionMatrix * spotDepthViewMatrix * corners[i];
+		glm::vec4 posV = spotDepthViewMatrix * corners[i];
+		glm::vec4 posC = spotDepthProjectionMatrix * posV;
+		glm::vec4 posN = posC / posC.w;
+		//glm::vec4 posBias = spotDepthBiasMatrix * spotDepthProjectionMatrix * spotDepthViewMatrix * corners[i];
+		//glm::vec4 posN = posBias / posBias.w;
+
+		std::cout << "Crate corner (" << corners[i].x << ", " << corners[i].y << ", " << corners[i].z << ", " << corners[i].w << ")" << std::endl;
+		std::cout << "\tLight View Space: (" << posV.x << ", " << posV.y << ", " << posV.z << ", " << posV.w << ")" << std::endl;
+		std::cout << "\tLight Clip Space: (" << posC.x << ", " << posC.y << ", " << posC.z << ", " << posC.w << ")" << std::endl;
+		std::cout << "\tLight NDC (Shadowmap Coordinate) Space: (" << posN.x << ", " << posN.y << ", " << posN.z << ", " << posN.w << ")" << std::endl;
+	}
+
+	glGenBuffers(1, &perShadowcasterBuffer);
+
+
 }
 
 void CleanupScene()
 {
+	glDeleteFramebuffers(1, &spotShadowDepthFBO);
+	glDeleteSamplers(1, &spotShadowDepthSampler);
+	glDeleteTextures(1, &spotShadowDepthTexture);
 	glDeleteSamplers(1, &sampler);
 	glDetachShader(program, vshader);
 	glDetachShader(program, fshader);
@@ -527,8 +660,10 @@ bool HandleEvents()
 				{
 					case SDL_WINDOWEVENT_RESIZED:
 					{
-						glViewport(0, 0, e.window.data1, e.window.data2);
-						camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float) e.window.data1, (float) e.window.data2));
+						viewportWidth = e.window.data1;
+						viewportHeight = e.window.data2;
+						glViewport(0, 0, viewportWidth, viewportHeight);
+						camera.SetProjection(Camera::GetPerspectiveProjection(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)viewportWidth, (float)viewportHeight));
 
 						std::cout << "Window resized to " << e.window.data1 << "x" << e.window.data2 << std::endl;
 					} break;

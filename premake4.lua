@@ -25,26 +25,19 @@ solution "opengllabs"
 		flags { "Optimize" }
 	configuration {}
     
-    includedirs { "external/include/", "external/include/freetype/", "common/include/" }
+    includedirs { "external/include/", "common/include/" }
     
     project "common"
         kind "StaticLib"
         language "C++"
         files { "common/**.h", "common/**.cpp", "assets/shaders/**.vert", "assets/shaders/**.frag" }
         objdir "build/common/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "freetype" }
-    
-    project "raytracing"
-        kind "ConsoleApp"
-        language "C++"
-        files { "labs/raytracing/**.hpp", "labs/raytracing/**.cpp" }
-        objdir "build/raytracing/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "freetype", "common" }
+        links { "opengl32", "SDL2", "SDL2main", "glew32" }
         
-    project "lighting"
+    project "shadowmapping"
         kind "ConsoleApp"
         language "C++"
-        files { "labs/lighting/**.hpp", "labs/lighting/**.cpp" }
-        objdir "build/lighting/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "freetype", "common" }
+        files { "labs/shadowmapping/**.hpp", "labs/shadowmapping/**.cpp" }
+        objdir "build/shadowmapping/obj/"
+        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
         

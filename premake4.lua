@@ -30,14 +30,21 @@ solution "opengllabs"
     project "common"
         kind "StaticLib"
         language "C++"
-        files { "common/**.h", "common/**.cpp", "assets/shaders/**.vert", "assets/shaders/**.frag" }
+        files { "code/common/**.h", "code/common/**.cpp", "assets/shaders/**.vert", "assets/shaders/**.frag", "assets/shaders/**.geom" }
         objdir "build/common/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32" }
         
-    project "shadowmapping"
+    project "labs"
         kind "ConsoleApp"
         language "C++"
-        files { "labs/shadowmapping/**.hpp", "labs/shadowmapping/**.cpp" }
+        files { "code/labs/**.hpp", "code/labs/**.cpp" }
         objdir "build/shadowmapping/obj/"
+        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        
+    project "project"
+        kind "ConsoleApp"
+        language "C++"
+        files { "code/project/**.hpp", "code/project/**.cpp" }
+        objdir "build/project/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
         

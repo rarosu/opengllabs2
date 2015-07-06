@@ -1,8 +1,8 @@
 #version 440
 
-#define DIRECTIONAL_LIGHT_COUNT 1
-#define POINT_LIGHT_COUNT 1
-#define SPOT_LIGHT_COUNT 1
+#define MAX_DIRECTIONAL_LIGHT_COUNT 1
+#define MAX_POINT_LIGHT_COUNT 1
+#define MAX_SPOT_LIGHT_COUNT 1
 
 struct AmbientLight
 {
@@ -41,9 +41,9 @@ out vec4 out_color;
 layout(binding = 0, std140) uniform Constant
 {
 	AmbientLight ambientLight;
-	DirectionalLight directionalLights[DIRECTIONAL_LIGHT_COUNT];
-    PointLight pointLights[POINT_LIGHT_COUNT];
-	SpotLight spotLights[SPOT_LIGHT_COUNT];
+	DirectionalLight directionalLights[MAX_DIRECTIONAL_LIGHT_COUNT];
+    PointLight pointLights[MAX_POINT_LIGHT_COUNT];
+	SpotLight spotLights[MAX_SPOT_LIGHT_COUNT];
 };
 
 layout(binding = 1, std140) uniform PerFrame
@@ -63,7 +63,6 @@ layout(binding = 2, std140) uniform PerInstance
 };
 
 layout(binding = 0) uniform sampler2D samplerDiffuse;
-layout(binding = 1) uniform sampler2D samplerShadowmap;
 
 void AddDirectionalLightContribution(DirectionalLight light, vec3 surfaceColor, vec3 surfaceToCamera, inout vec3 diffuse, inout vec3 specular);
 void AddPointLightContribution(PointLight light, vec3 surfaceColor, vec3 surfaceToCamera, inout vec3 diffuse, inout vec3 specular);
@@ -93,36 +92,15 @@ void main()
         AddPointLightContribution(pointLights[i], surfaceColor, surfaceToCamera, diffuse, specular);
     }
 
-	// Spot lights (index 0 is shadowmapped)
+	// Spot lights
 	vec4 posL = vs_positionL / vs_positionL.w;
-	//vec2 shadowmapTexcoords = vec2((vs_positionL.s + 1.0) * 0.5, (vs_positionL.t + 1.0) * 0.5);
-	vec2 shadowmapTexcoords = vec2(posL.s, posL.t);
-	if (shadowmapTexcoords.x < 0.0f || shadowmapTexcoords.x > 1.0f || shadowmapTexcoords.y < 0.0f || shadowmapTexcoords.y > 1.0f || posL.z < 0.0f || posL.z > 1.0f)
-	{
-		// Do light calculations as we are outside the shadowmap.
-		//AddSpotLightContribution(spotLights[0], surfaceColor, surfaceToCamera, diffuse, specular);
-	}
-	else
-	{
-		if (posL.z - 0.001f < texture(samplerShadowmap, shadowmapTexcoords).r)
-		{
-			// Do light calculations as we are in front of occluding geometry.
-			AddSpotLightContribution(spotLights[0], surfaceColor, surfaceToCamera, diffuse, specular);
-		}
-	}
-
-	for (int i = 1; i < SPOT_LIGHT_COUNT; ++i)
+	for (int i = 0; i < SPOT_LIGHT_COUNT; ++i)
     {
         AddSpotLightContribution(spotLights[i], surfaceColor, surfaceToCamera, diffuse, specular);
     }
 
     out_color = vec4(ambient + diffuse + specular, 1.0f);
-	//out_color = texture(samplerDiffuse, vs_texcoord);
-	//out_color = vec4(vec3(vs_positionL.z), 1.0f);
-	//out_color = vec4(vec3(texture(samplerShadowmap, shadowmapTexcoords).r), 1.0f);
 }
-
-
 
 
 void AddDirectionalLightContribution(DirectionalLight light, vec3 surfaceColor, vec3 surfaceToCamera, inout vec3 diffuse, inout vec3 specular)

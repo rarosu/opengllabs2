@@ -33,12 +33,19 @@ solution "opengllabs"
         files { "code/common/**.h", "code/common/**.cpp", "assets/shaders/**.vert", "assets/shaders/**.frag", "assets/shaders/**.geom" }
         objdir "build/common/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32" }
-        
-    project "labs"
+    
+    project "raytracing"
         kind "ConsoleApp"
         language "C++"
-        files { "code/labs/**.hpp", "code/labs/**.cpp" }
-        objdir "build/shadowmapping/obj/"
+        files { "code/raytracing/**.hpp", "code/raytracing/**.cpp" }
+        objdir "build/raytracing/obj/"
+        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        
+    project "lighting"
+        kind "ConsoleApp"
+        language "C++"
+        files { "code/lighting/**.hpp", "code/lighting/**.cpp", "code/lighting/shaders/**.vert", "code/lighting/shaders/**.frag" }
+        objdir "build/lighting/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
         
     project "project"
@@ -46,5 +53,19 @@ solution "opengllabs"
         language "C++"
         files { "code/project/**.hpp", "code/project/**.cpp" }
         objdir "build/project/obj/"
+        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        
+    project "objviewer"
+        kind "ConsoleApp"
+        language "C++"
+        files { "code/objviewer/**.hpp", "code/objviewer/**.cpp" }
+        objdir "build/objviewer/obj/"
+        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        
+    project "shadowmapping"
+        kind "ConsoleApp"
+        language "C++"
+        files { "code/shadowmapping/**.hpp", "code/shadowmapping/**.cpp" }
+        objdir "build/shadowmapping/obj/"
         links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
         

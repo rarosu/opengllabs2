@@ -1,4 +1,4 @@
-#version 400
+#version 440
 
 in vec4 in_coords;
 out vec2 vs_texcoords;

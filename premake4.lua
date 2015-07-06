@@ -25,7 +25,7 @@ solution "opengllabs"
 		flags { "Optimize" }
 	configuration {}
     
-    includedirs { "external/include/", "common/include/" }
+    includedirs { "external/include/", "code/common/include/" }
     
     project "common"
         kind "StaticLib"

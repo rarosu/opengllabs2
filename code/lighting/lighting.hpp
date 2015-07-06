@@ -6,16 +6,22 @@
 	Year: 2015
 
 	This lab demonstrates a rotating, textured cube lit by a point light.
+
+	Camera controls:
+		Move: W, A, S, D.
+		Pan: Hold left mouse button and drag.
 */
+
+#pragma once
 
 #define GLM_FORCE_RADIANS
 
+#include <GL/gl3w.h>
+#include <glm/glm.hpp>
 #include <common/model.h>
 #include <common/shader.h>
 #include <common/camera.h>
 #include <SDL2/SDL.h>
-#include <GL/glew.h>
-#include <glm/glm.hpp>
 #include <string>
 
 const std::string DIRECTORY_ASSETS_ROOT = "../../../assets/";

@@ -23,6 +23,14 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+void __stdcall OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
+{
+	if (type == GL_DEBUG_TYPE_ERROR)
+	{
+		std::cout << message << std::endl;
+	}
+}
+
 InputState::InputState()
 {
 	memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
@@ -30,11 +38,6 @@ InputState::InputState()
 	mouse_right_down = false;
 	mouse_x = 0;
 	mouse_y = 0;
-}
-
-void GLAPIENTRY OutputDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
-{
-	std::cout << message << std::endl;
 }
 
 Lighting::Lighting()
@@ -70,14 +73,17 @@ Lighting::~Lighting()
 	glDeleteProgram(mesh_program);
 	glDeleteShader(mesh_vs);
 	glDeleteShader(mesh_fs);
+
 	glDeleteBuffers(1, &uniform_buffer_constant);
 	glDeleteBuffers(1, &uniform_buffer_frame);
+
 	glDeleteBuffers(1, &uniform_buffer_cube);
 	glDeleteBuffers(1, &cube_vbo_positions);
 	glDeleteBuffers(1, &cube_vbo_normals);
 	glDeleteBuffers(1, &cube_vbo_texcoords);
 	glDeleteVertexArrays(1, &cube_vao);
 	glDeleteTextures(1, &cube_texture);
+
 	glDeleteSamplers(1, &diffuse_sampler);
 
 	SDL_GL_DeleteContext(glcontext);
@@ -120,20 +126,29 @@ void Lighting::SetupContext()
 		throw std::runtime_error(std::string("Failed to create OpenGL context: ") + SDL_GetError());
 	}
 
-	// Initialize the extension wrangler.
-	glewExperimental = GL_TRUE;
-	GLenum glewResult = glewInit();
-	if (glewResult != GLEW_OK)
+	// Initialize the profile loader.
+	if (gl3wInit() != 0)
 	{
-		throw std::runtime_error(std::string("Failed to initialize GLEW: ") + (const char*)glewGetErrorString(glewResult));
+		throw std::runtime_error(std::string("Failed to initialize gl3w"));
 	}
-	glGetError(); // Clear the error buffer caused by GLEW.
+
+	if (gl3wIsSupported(4, 4) != 1)
+	{
+		throw std::runtime_error(std::string("OpenGL 4.4 is not supported"));
+	}
+
+
+	//glewExperimental = GL_TRUE;
+	//GLenum glewResult = glewInit();
+	//if (glewResult != GLEW_OK)
+	//{
+	//	throw std::runtime_error(std::string("Failed to initialize GLEW: ") + (const char*)glewGetErrorString(glewResult));
+	//}
+	//glGetError(); // Clear the error buffer caused by GLEW.
 
 
 	// Setup an error callback function.
-#ifndef NDEBUG
 	glDebugMessageCallback(OutputDebugMessage, nullptr);
-#endif
 
 	// Setup the initial OpenGL context state.
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

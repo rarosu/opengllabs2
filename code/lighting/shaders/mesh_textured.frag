@@ -15,7 +15,6 @@ struct PointLight
 in vec3 vs_position_W;
 in vec3 vs_normal_W;
 in vec2 vs_texcoord;
-in vec4 vs_position_L;
 
 out vec4 out_color;
 
@@ -58,7 +57,7 @@ void main()
 	// Point light.
 	AddPointLightContribution(point_light, surface_color, surface_to_camera, diffuse, specular);
 
-	// Sum the lighting factors.
+	// Sum the lighting terms.
 	out_color = vec4(ambient + diffuse + specular, 1.0f);
 }
 

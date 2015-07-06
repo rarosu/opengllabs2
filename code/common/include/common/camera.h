@@ -6,14 +6,14 @@
 
 struct Frustum
 {
-	float near;
-	float far;
+	float near_z;
+	float far_z;
 	float fovY;
 	float width;
 	float height;
 
 	Frustum();
-	Frustum(float near, float far, float fovY, float width, float height);
+	Frustum(float near_z, float far_z, float fovY, float width, float height);
 	glm::mat4 GetPerspectiveProjection() const;
 };
 

@@ -32,40 +32,40 @@ solution "opengllabs"
         language "C++"
         files { "code/common/**.h", "code/common/**.cpp", "assets/shaders/**.vert", "assets/shaders/**.frag", "assets/shaders/**.geom" }
         objdir "build/common/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32" }
+        links { "opengl32", "SDL2", "SDL2main", "gl3w" }
     
     project "raytracing"
         kind "ConsoleApp"
         language "C++"
         files { "code/raytracing/**.hpp", "code/raytracing/**.cpp" }
         objdir "build/raytracing/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         
     project "lighting"
         kind "ConsoleApp"
         language "C++"
         files { "code/lighting/**.hpp", "code/lighting/**.cpp", "code/lighting/shaders/**.vert", "code/lighting/shaders/**.frag" }
         objdir "build/lighting/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         
     project "project"
         kind "ConsoleApp"
         language "C++"
         files { "code/project/**.hpp", "code/project/**.cpp" }
         objdir "build/project/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         
     project "objviewer"
         kind "ConsoleApp"
         language "C++"
         files { "code/objviewer/**.hpp", "code/objviewer/**.cpp" }
         objdir "build/objviewer/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         
     project "shadowmapping"
         kind "ConsoleApp"
         language "C++"
-        files { "code/shadowmapping/**.hpp", "code/shadowmapping/**.cpp" }
+        files { "code/shadowmapping/**.hpp", "code/shadowmapping/**.cpp", "code/shadowmapping/shaders/**.vert", "code/shadowmapping/shaders/**.frag" }
         objdir "build/shadowmapping/obj/"
-        links { "opengl32", "SDL2", "SDL2main", "glew32", "common" }
+        links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         

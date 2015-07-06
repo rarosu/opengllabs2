@@ -4,9 +4,9 @@
 Frustum::Frustum()
 {}
 
-Frustum::Frustum(float near, float far, float fovY, float width, float height)
-	: near(near)
-	, far(far)
+Frustum::Frustum(float near_z, float far_z, float fovY, float width, float height)
+	: near_z(near_z)
+	, far_z(far_z)
 	, fovY(fovY)
 	, width(width)
 	, height(height)
@@ -20,8 +20,8 @@ glm::mat4 Frustum::GetPerspectiveProjection() const
 	float fovScale = 1.0f / std::tan(fovY * 0.5f);
 	perspective[0][0] = fovScale * aspect;
 	perspective[1][1] = fovScale;
-	perspective[2][2] = (near + far) / (near - far);
-	perspective[3][2] = 2 * near * far / (near - far);
+	perspective[2][2] = (near_z + far_z) / (near_z - far_z);
+	perspective[3][2] = 2 * near_z * far_z / (near_z - far_z);
 	perspective[2][3] = -1.0f;
 
 	return perspective;

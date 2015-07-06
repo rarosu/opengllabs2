@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GL/glew.h>
+#include <GL/gl3w.h>
 
 GLuint CompileShaderFromFile(const char* filepath, GLenum shaderType);
 GLuint CompileShaderFromSource(const char* source, GLenum shaderType);

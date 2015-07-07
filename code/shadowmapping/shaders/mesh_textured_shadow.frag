@@ -66,8 +66,10 @@ void main()
 	// Spot lights.
 	for (int i = 0; i < spot_light_count; ++i)
 	{
+		//AddSpotLightContribution(spot_lights[i], surface_color, surface_to_camera, diffuse, specular);
+
 		vec4 position_L = vs_position_L[i] / vs_position_L[i].w;
-		vec3 shadowcoords = vec3(i, position_L.s, position_L.t);
+		vec3 shadowcoords = vec3(position_L.s, position_L.t, i);
 
 		if (shadowcoords.x < 0.0f || shadowcoords.x > 1.0f || shadowcoords.y < 0.0f || shadowcoords.y > 1.0f || position_L.z < 0.0f || position_L.z > 1.0f)
 		{
@@ -78,7 +80,7 @@ void main()
 			if (position_L.z - 0.001f < texture(sampler_shadowmap, shadowcoords).r)
 			{
 				// Do light calculations as we are in front of occluding geometry.
-				AddSpotLightContribution(spot_lights[0], surface_color, surface_to_camera, diffuse, specular);
+				AddSpotLightContribution(spot_lights[i], surface_color, surface_to_camera, diffuse, specular);
 			}
 		}
 

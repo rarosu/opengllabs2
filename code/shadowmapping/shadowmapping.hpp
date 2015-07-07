@@ -12,6 +12,7 @@
 		Pan: Hold left mouse button and drag.
 	Change shadow map resolution: R
 	Change number of spot lights: Keys 1 - 5.
+	Toggle using spot light 1 as a flashlight: F
 */
 
 #pragma once
@@ -45,7 +46,7 @@ const int TEXTURE_UNIT_SHADOWMAP = 1;
 
 const float SPOT_LIGHT_ANGLE = glm::radians(22.5f);
 const int SPOT_LIGHT_COUNT_MAX = 5;
-const int SPOT_LIGHT_COUNT_DEFAULT = 3;
+const int SPOT_LIGHT_COUNT_DEFAULT = 1;
 const int SHADOWMAP_WIDTHS[] = { 256, 512, 1024, 2048 };
 const int SHADOWMAP_HEIGHTS[] = { 256, 512, 1024, 2048 };
 const int SHADOWMAP_RESOLUTION_COUNT = sizeof(SHADOWMAP_WIDTHS) / sizeof(int);
@@ -161,6 +162,7 @@ private:
 	unsigned int viewport_height;
 	int shadowmap_resolution_index;
 	bool running;
+	bool flashlight_mode;
 
 	void SetupContext();
 	void SetupResources();

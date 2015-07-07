@@ -14,14 +14,15 @@ int main(int argc, char* argv[])
 	{
 		std::cerr << e.what() << std::endl;
 		return_code = 1;
+		std::cin.get();
 	}
 	catch (...)
 	{
 		std::cerr << "Unknown exception caught at outmost level" << std::endl;
 		return_code = 1;
+		std::cin.get();
 	}
-
-	std::cin.get();
+	
 	return return_code;
 }
 
@@ -74,6 +75,7 @@ Shadowmapping::Shadowmapping()
 	, viewport_width(VIEWPORT_WIDTH_INITIAL)
 	, viewport_height(VIEWPORT_HEIGHT_INITIAL)
 	, running(true)
+	, flashlight_mode(false)
 {
 	SetupContext();
 	SetupResources();
@@ -142,7 +144,7 @@ void Shadowmapping::SetupContext()
 #endif
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, flags);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
@@ -160,20 +162,10 @@ void Shadowmapping::SetupContext()
 		throw std::runtime_error(std::string("Failed to initialize gl3w"));
 	}
 
-	if (gl3wIsSupported(4, 3) != 1)
+	if (gl3wIsSupported(4, 4) != 1)
 	{
 		throw std::runtime_error(std::string("OpenGL 4.4 is not supported"));
 	}
-
-
-	// Initialize the extension wrangler.
-	//glewExperimental = GL_TRUE;
-	//GLenum glewResult = glewInit();
-	//if (glewResult != GLEW_OK)
-	//{
-	//	throw std::runtime_error(std::string("Failed to initialize GLEW: ") + (const char*)glewGetErrorString(glewResult));
-	//}
-	//glGetError(); // Clear the error buffer caused by GLEW.
 
 	// Setup an error callback function.
 	glDebugMessageCallback(OutputDebugMessage, nullptr);
@@ -253,10 +245,6 @@ void Shadowmapping::SetupResources()
 	// Update the shadowmap resources (texture array and constant buffer).
 	UpdateShadowmapResources(SHADOWMAP_RESOLUTION_DEFAULT, SPOT_LIGHT_COUNT_DEFAULT);
 
-	// Update the constant uniform buffer.
-	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, uniform_buffer_constant);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferConstant), &uniform_data_constant, GL_STATIC_DRAW);
-
 	// Generate the shadowmap framebuffer object.
 	glGenFramebuffers(1, &shadowmap_fbo);
 
@@ -264,9 +252,7 @@ void Shadowmapping::SetupResources()
 	LoadModel(FILE_CUBE_MODEL.c_str(), cube);
 	LoadModel(FILE_PLANE_MODEL.c_str(), plane);
 
-	plane.uniform_data.model_matrix = glm::scale(glm::vec3(15.0f, 1.0f, 15.0f)) * glm::translate(glm::vec3(0.0f, -3.0f, 0.0f));
-	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, plane.uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &plane.uniform_data, GL_DYNAMIC_DRAW);
+	plane.uniform_data.model_matrix = glm::scale(glm::vec3(25.0f, 1.0f, 25.0f)) * glm::translate(glm::vec3(0.0f, -3.0f, 0.0f));
 }
 
 void Shadowmapping::LoadModel(const char* filepath, Entity& entity)
@@ -366,6 +352,7 @@ void Shadowmapping::HandleEvents()
 						camera_frustum.width = static_cast<float>(viewport_width);
 						camera_frustum.height = static_cast<float>(viewport_height);
 						camera.SetProjection(camera_frustum.GetPerspectiveProjection());
+						camera.RecalculateMatrices();
 
 						std::cout << "Window resized to " << e.window.data1 << "x" << e.window.data2 << std::endl;
 					} break;
@@ -449,6 +436,45 @@ void Shadowmapping::UpdateScene(float dt)
 	cube_angle += CUBE_ROTATION_SPEED * dt;
 	cube.uniform_data.model_matrix = glm::rotate(cube_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 	cube.uniform_data.normal_matrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(cube.uniform_data.model_matrix))));
+
+	if (input_state_current.keys[SDL_SCANCODE_F] && !input_state_previous.keys[SDL_SCANCODE_F])
+		flashlight_mode = !flashlight_mode;
+	if (input_state_current.keys[SDL_SCANCODE_1] && !input_state_previous.keys[SDL_SCANCODE_1])
+		UpdateShadowmapResources(shadowmap_resolution_index, 1);
+	if (input_state_current.keys[SDL_SCANCODE_2] && !input_state_previous.keys[SDL_SCANCODE_2])
+		UpdateShadowmapResources(shadowmap_resolution_index, 2);
+	if (input_state_current.keys[SDL_SCANCODE_3] && !input_state_previous.keys[SDL_SCANCODE_3])
+		UpdateShadowmapResources(shadowmap_resolution_index, 3);
+	if (input_state_current.keys[SDL_SCANCODE_4] && !input_state_previous.keys[SDL_SCANCODE_4])
+		UpdateShadowmapResources(shadowmap_resolution_index, 4);
+	if (input_state_current.keys[SDL_SCANCODE_5] && !input_state_previous.keys[SDL_SCANCODE_5])
+		UpdateShadowmapResources(shadowmap_resolution_index, 5);
+	if (input_state_current.keys[SDL_SCANCODE_R] && !input_state_previous.keys[SDL_SCANCODE_R])
+	{
+		shadowmap_resolution_index++;
+		if (shadowmap_resolution_index >= SHADOWMAP_RESOLUTION_COUNT)
+			shadowmap_resolution_index = 0;
+
+		UpdateShadowmapResources(shadowmap_resolution_index, uniform_data_constant.spot_light_count);
+		std::cout << "Shadow map dimensions: " << shadowmap_width << "x" << shadowmap_height << std::endl;
+	}
+
+	if (flashlight_mode)
+	{
+		uniform_data_constant.spot_lights[0].position_W = glm::vec4(camera.GetPosition(), 1.0f);
+		uniform_data_constant.spot_lights[0].direction_W = glm::vec4(camera.GetFacing(), 0.0f);
+
+		Frustum frustum = Frustum(SHADOWMAP_NEAR, SHADOWMAP_FAR, 2.0f * SPOT_LIGHT_ANGLE, (float)shadowmap_width, (float)shadowmap_height);
+		glm::mat4 projection = frustum.GetPerspectiveProjection();
+		glm::mat4 view = glm::lookAt(camera.GetPosition(),
+			camera.GetPosition() + camera.GetFacing(),
+			glm::vec3(0.1f, 1.0f, 0.0f));
+
+		uniform_data_constant.spot_lights[0].light_projection_view_matrix = projection * view;
+
+		glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, uniform_buffer_constant);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferConstant), &uniform_data_constant, GL_DYNAMIC_DRAW);
+	}
 }
 
 void Shadowmapping::RenderScene()
@@ -468,6 +494,10 @@ void Shadowmapping::RenderScene()
 
 	// Draw the entities.
 	glUseProgram(mesh_program);
+
+	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_SHADOWMAP);
+	glBindSampler(TEXTURE_UNIT_SHADOWMAP, shadowmap_sampler);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmap_texture_array);
 
 	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_DIFFUSE);
 	glBindSampler(TEXTURE_UNIT_DIFFUSE, diffuse_sampler);
@@ -526,7 +556,7 @@ void Shadowmapping::RenderDepth()
 		depth_uniform_data.normal_matrix = uniform_data_constant.spot_lights[i].light_projection_view_matrix;
 		glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, plane.uniform_buffer);
 		glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &depth_uniform_data, GL_DYNAMIC_DRAW);
-
+		
 		glBindVertexArray(plane.vao);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
@@ -559,13 +589,17 @@ void Shadowmapping::UpdateShadowmapResources(int resolution_index, int spot_ligh
 	float current_angle = 0.0f;
 	for (int i = 0; i < spot_light_count; ++i)
 	{
-		glm::vec3 position = glm::vec3(radius * std::cos(current_angle), 1.0f, radius * std::sin(current_angle));
+		// Do not move the first spotlight if we are in flashlight mode.
+		if (i == 0 && flashlight_mode)
+			continue;
+
+		glm::vec3 position = glm::vec3(radius * std::cos(current_angle), 2.0f, radius * std::sin(current_angle));
 		glm::vec3 facing = glm::normalize(-position);
 
 		// Calculate the spot light's view matrix.
 		// TODO: Check whether x has to be 0.1f.
-		glm::mat4 view = glm::lookAt(glm::vec3(position),
-			glm::vec3(position + facing),
+		glm::mat4 view = glm::lookAt(position,
+			position + facing,
 			glm::vec3(0.1f, 1.0f, 0.0f));
 
 		uniform_data_constant.spot_lights[i].position_W = glm::vec4(position, 1.0f);
@@ -578,16 +612,13 @@ void Shadowmapping::UpdateShadowmapResources(int resolution_index, int spot_ligh
 		current_angle += delta_angle;
 	}
 
+	// Update the constant uniform buffer.
+	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, uniform_buffer_constant);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferConstant), &uniform_data_constant, GL_DYNAMIC_DRAW);
+
 	// Generate the shadowmap texture array.
 	glDeleteTextures(1, &shadowmap_texture_array);
 	glGenTextures(1, &shadowmap_texture_array);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmap_texture_array);
-
-	//glTexImage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, shadowmap_width, shadowmap_height, uniform_data_constant.spot_light_count, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-	
-	//float* data = new float[shadowmap_width * shadowmap_height * uniform_data_constant.spot_light_count];
-	//memset(data, 0, shadowmap_width * shadowmap_height * uniform_data_constant.spot_light_count);
 	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, shadowmap_width, shadowmap_height, uniform_data_constant.spot_light_count);
-	//glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, shadowmap_width, shadowmap_height, uniform_data_constant.spot_light_count, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-	//delete[] data;
 }

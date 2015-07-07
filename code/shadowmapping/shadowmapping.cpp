@@ -2,6 +2,8 @@
 #include <iostream>
 #include <gli/gli.hpp>
 #include <glm/gtx/transform.hpp>
+#include <sstream>
+#include <fstream>
 
 int main(int argc, char* argv[])
 {
@@ -76,6 +78,8 @@ Shadowmapping::Shadowmapping()
 	, viewport_height(VIEWPORT_HEIGHT_INITIAL)
 	, running(true)
 	, flashlight_mode(false)
+	, rendering_time_clock(0)
+	, report_ticks(-1)
 {
 	SetupContext();
 	SetupResources();
@@ -128,7 +132,7 @@ void Shadowmapping::SetupContext()
 		throw std::runtime_error(std::string("Failed to initialize SDL: ") + SDL_GetError());
 	}
 
-	window = SDL_CreateWindow("Shadowmapping",
+	window = SDL_CreateWindow(WINDOW_TITLE.c_str(),
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		viewport_width, viewport_height,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -186,8 +190,8 @@ void Shadowmapping::SetupContext()
 		std::cout << "OpenGL version: " << major << "." << minor << std::endl;
 	}
 
-	// Set vsync enabled.
-	SDL_GL_SetSwapInterval(1);
+	// Set vsync disabled. Vsync messes up the time measurements. Not sure why since SDL_GL_SwapBuffers are not included.
+	SDL_GL_SetSwapInterval(0);
 }
 
 void Shadowmapping::SetupResources()
@@ -304,15 +308,13 @@ void Shadowmapping::LoadModel(const char* filepath, Entity& entity)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, cube_texture_image.dimensions(0).x, cube_texture_image.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, cube_texture_image.data());
 
 	// Setup the instance buffer.
-	entity.uniform_data.material_specular_color = glm::vec4(material.Ks, material.Ns);
-
 	glGenBuffers(1, &entity.uniform_buffer);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, entity.uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &entity.uniform_data, GL_DYNAMIC_DRAW);
+	entity.uniform_data.material_specular_color = glm::vec4(material.Ks, material.Ns);
 }
 
 void Shadowmapping::Run()
 {
+	std::stringstream caption;
 	Uint32 last_clock = SDL_GetTicks();
 	while (running)
 	{
@@ -325,6 +327,10 @@ void Shadowmapping::Run()
 		UpdateCamera(dt);
 		UpdateScene(dt);
 		RenderScene();
+
+		caption.str("");
+		caption << WINDOW_TITLE << " - Rendering time: " << static_cast<float>(rendering_time_clock) / 1000.0f << " ms";
+		SDL_SetWindowTitle(window, caption.str().c_str());
 	}
 }
 
@@ -421,13 +427,13 @@ void Shadowmapping::UpdateCamera(float dt)
 
 	glm::vec3 displacement = camera.GetPosition();
 	if (input_state_current.keys[SDL_SCANCODE_W] || input_state_current.keys[SDL_SCANCODE_UP])
-		displacement += camera.GetFacing() * CAMERA_MOVE_SPEED;
+		displacement += camera.GetFacing() * CAMERA_MOVE_SPEED * dt;
 	if (input_state_current.keys[SDL_SCANCODE_S] || input_state_current.keys[SDL_SCANCODE_DOWN])
-		displacement -= camera.GetFacing() * CAMERA_MOVE_SPEED;
+		displacement -= camera.GetFacing() * CAMERA_MOVE_SPEED * dt;
 	if (input_state_current.keys[SDL_SCANCODE_A] || input_state_current.keys[SDL_SCANCODE_LEFT])
-		displacement -= camera.GetRight() * CAMERA_MOVE_SPEED;
+		displacement -= camera.GetRight() * CAMERA_MOVE_SPEED * dt;
 	if (input_state_current.keys[SDL_SCANCODE_D] || input_state_current.keys[SDL_SCANCODE_RIGHT])
-		displacement += camera.GetRight() * CAMERA_MOVE_SPEED;
+		displacement += camera.GetRight() * CAMERA_MOVE_SPEED * dt;
 
 	camera.SetPosition(displacement);
 	camera.RecalculateMatrices();
@@ -439,6 +445,12 @@ void Shadowmapping::UpdateScene(float dt)
 	cube.uniform_data.model_matrix = glm::rotate(cube_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 	cube.uniform_data.normal_matrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(cube.uniform_data.model_matrix))));
 
+	if (input_state_current.keys[SDL_SCANCODE_P] && !input_state_previous.keys[SDL_SCANCODE_P])
+	{
+		std::cout << "Generating report over " << REPORT_TICK_COUNT << " frames... Please do not change any settings..." << std::endl;
+		report_ticks = 0;
+	}
+	
 	if (input_state_current.keys[SDL_SCANCODE_F] && !input_state_previous.keys[SDL_SCANCODE_F])
 		flashlight_mode = !flashlight_mode;
 	if (input_state_current.keys[SDL_SCANCODE_1] && !input_state_previous.keys[SDL_SCANCODE_1])
@@ -481,6 +493,9 @@ void Shadowmapping::UpdateScene(float dt)
 
 void Shadowmapping::RenderScene()
 {
+	// Time the rendering.
+	timer.Start();
+
 	// Render the scene depth to the shadow maps.
 	RenderDepth();
 
@@ -521,6 +536,13 @@ void Shadowmapping::RenderScene()
 	glBindTexture(GL_TEXTURE_2D, plane.texture);
 	glBindVertexArray(plane.vao);
 	glDrawArrays(GL_TRIANGLES, 0, plane.vertex_count);
+
+	// Calculate the time the rendering took.
+	rendering_time_clock = timer.End();
+	if (report_ticks >= 0)
+	{
+		UpdateReport(rendering_time_clock);
+	}
 
 	// Swap the back and front buffers.
 	SDL_GL_SwapWindow(window);
@@ -630,4 +652,43 @@ void Shadowmapping::UpdateShadowmapResources(int resolution_index, int spot_ligh
 	glGenTextures(1, &shadowmap_texture_array);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmap_texture_array);
 	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, shadowmap_width, shadowmap_height, uniform_data_constant.spot_light_count);
+}
+
+void Shadowmapping::UpdateReport(int64_t rendering_time)
+{
+	report_clocks[report_ticks] = rendering_time;
+	report_ticks++;
+	if (report_ticks >= REPORT_TICK_COUNT)
+	{
+		float average = 0.0f;
+		for (int i = 0; i < REPORT_TICK_COUNT; ++i)
+		{
+			average += report_clocks[i] / 1000.0f;
+		}
+		average /= REPORT_TICK_COUNT;
+
+		float max = -100000.0f;
+		float min = +100000.0f;
+		for (int i = 0; i < REPORT_TICK_COUNT; ++i)
+		{
+			max = std::max(max, report_clocks[i] / 1000.0f);
+			min = std::min(min, report_clocks[i] / 1000.0f);
+		}
+
+		std::stringstream filename;
+		filename << "performance_report_" << uniform_data_constant.spot_light_count << "_" << shadowmap_width << "x" << shadowmap_height << ".txt";
+		std::ofstream file(filename.str().c_str());
+		if (file.is_open())
+		{
+			file << "Performance measurements over " << REPORT_TICK_COUNT << " frames." << std::endl;
+			file << "Number of spot lights: " << uniform_data_constant.spot_light_count << std::endl;
+			file << "Shadow map resolution: " << shadowmap_width << "x" << shadowmap_height << std::endl;
+			file << "Average (ms): " << average << std::endl;
+			file << "Max (ms): " << max << std::endl;
+			file << "Min (ms): " << min << std::endl;
+		}
+
+		report_ticks = -1;
+		std::cout << "Report written to " << filename.str() << "." << std::endl;
+	}
 }

@@ -13,6 +13,7 @@
 	Change shadow map resolution: R
 	Change number of spot lights: Keys 1 - 5.
 	Toggle using spot light 1 as a flashlight: F
+	Start generating performance report: P
 */
 
 #pragma once
@@ -22,11 +23,13 @@
 #include <common/model.h>
 #include <common/shader.h>
 #include <common/camera.h>
+#include <common/timer.h>
 #include <SDL2/SDL.h>
 #include <GL/gl3w.h>
 #include <glm/glm.hpp>
 #include <string>
 
+const std::string WINDOW_TITLE = "Shadowmapping";
 const std::string DIRECTORY_ASSETS_ROOT = "../../../assets/";
 const std::string DIRECTORY_SHADERS = "../../../code/shadowmapping/shaders/";
 const std::string DIRECTORY_MODELS = DIRECTORY_ASSETS_ROOT + "models/";
@@ -47,8 +50,8 @@ const int TEXTURE_UNIT_SHADOWMAP = 1;
 const float SPOT_LIGHT_ANGLE = glm::radians(22.5f);
 const int SPOT_LIGHT_COUNT_MAX = 5;
 const int SPOT_LIGHT_COUNT_DEFAULT = 1;
-const int SHADOWMAP_WIDTHS[] = { 256, 512, 1024, 2048 };
-const int SHADOWMAP_HEIGHTS[] = { 256, 512, 1024, 2048 };
+const int SHADOWMAP_WIDTHS[] = { 256, 512, 1024, 2048, 4096 };
+const int SHADOWMAP_HEIGHTS[] = { 256, 512, 1024, 2048, 4096 };
 const int SHADOWMAP_RESOLUTION_COUNT = sizeof(SHADOWMAP_WIDTHS) / sizeof(int);
 const int SHADOWMAP_RESOLUTION_DEFAULT = 2;
 const float SHADOWMAP_NEAR = 0.5f;
@@ -60,8 +63,10 @@ const float PERSPECTIVE_NEAR = 1.0f;
 const float PERSPECTIVE_FAR = 100.0f;
 const float PERSPECTIVE_FOV = glm::radians(75.0f);
 const float CAMERA_SENSITIVITY = 0.005f;
-const float CAMERA_MOVE_SPEED = 0.1f;
+const float CAMERA_MOVE_SPEED = 10.0f;
 const float CUBE_ROTATION_SPEED = 1.0f;
+
+const int REPORT_TICK_COUNT = 128;
 
 struct InputState
 {
@@ -163,6 +168,10 @@ private:
 	int shadowmap_resolution_index;
 	bool running;
 	bool flashlight_mode;
+	Timer timer;
+	int64_t rendering_time_clock;
+	int report_ticks;
+	int64_t report_clocks[REPORT_TICK_COUNT];
 
 	void SetupContext();
 	void SetupResources();
@@ -174,4 +183,5 @@ private:
 	void RenderScene();
 	void RenderDepth();
 	void UpdateShadowmapResources(int resolution_index, int spot_light_count);
+	void UpdateReport(int64_t rendering_time);
 };

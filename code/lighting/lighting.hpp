@@ -24,6 +24,7 @@
 #include <SDL2/SDL.h>
 #include <string>
 
+const std::string WINDOW_TITLE = "Shadowmapping";
 const std::string DIRECTORY_ASSETS_ROOT = "../../../assets/";
 const std::string DIRECTORY_SHADERS = "../../../code/lighting/shaders/";
 const std::string DIRECTORY_MODELS = DIRECTORY_ASSETS_ROOT + "models/";

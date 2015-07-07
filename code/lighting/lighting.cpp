@@ -98,7 +98,7 @@ void Lighting::SetupContext()
 		throw std::runtime_error(std::string("Failed to initialize SDL: ") + SDL_GetError());
 	}
 
-	window = SDL_CreateWindow("Transformation & Lighting",
+	window = SDL_CreateWindow(WINDOW_TITLE.c_str(),
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		viewport_width, viewport_height,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);

@@ -69,6 +69,7 @@ bool LoadOBJ(const char* filepath, OBJ& model)
 					break;
 				}
 
+				texcoord.t = 1.0f - texcoord.t;
 				texcoordLUT.push_back(texcoord);
 			}
 			else if (identifier == "f")

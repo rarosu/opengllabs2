@@ -1,6 +1,0 @@
-Performance measurements over 128 frames.
-Number of spot lights: 5
-Shadow map resolution: 4096x4096
-Average (ms): 0.417938
-Max (ms): 0.565
-Min (ms): 0.347

@@ -58,7 +58,7 @@ Entity::Entity()
 Shadowmapping::Shadowmapping()
 	: window(nullptr)
 	, glcontext(nullptr)
-	, cube_angle(0.0f)
+	, model_angle(0.0f)
 	, mesh_vs(0)
 	, mesh_fs(0)
 	, mesh_program(0)
@@ -103,12 +103,12 @@ Shadowmapping::~Shadowmapping()
 	glDeleteBuffers(1, &uniform_buffer_constant);
 	glDeleteBuffers(1, &uniform_buffer_frame);
 
-	glDeleteBuffers(1, &cube.uniform_buffer);
-	glDeleteBuffers(1, &cube.vbo_positions);
-	glDeleteBuffers(1, &cube.vbo_normals);
-	glDeleteBuffers(1, &cube.vbo_texcoords);
-	glDeleteVertexArrays(1, &cube.vao);
-	glDeleteTextures(1, &cube.texture);
+	glDeleteBuffers(1, &model.uniform_buffer);
+	glDeleteBuffers(1, &model.vbo_positions);
+	glDeleteBuffers(1, &model.vbo_normals);
+	glDeleteBuffers(1, &model.vbo_texcoords);
+	glDeleteVertexArrays(1, &model.vao);
+	glDeleteTextures(1, &model.texture);
 
 	glDeleteBuffers(1, &plane.uniform_buffer);
 	glDeleteBuffers(1, &plane.vbo_positions);
@@ -255,7 +255,7 @@ void Shadowmapping::SetupResources()
 	glGenFramebuffers(1, &shadowmap_fbo);
 
 	// Load the models and setup the entities.
-	LoadModel(FILE_CUBE_MODEL.c_str(), cube);
+	LoadModel(FILE_MODEL.c_str(), model);
 	LoadModel(FILE_PLANE_MODEL.c_str(), plane);
 
 	plane.uniform_data.model_matrix = glm::scale(glm::vec3(25.0f, 1.0f, 25.0f)) * glm::translate(glm::vec3(0.0f, -3.0f, 0.0f));
@@ -301,11 +301,11 @@ void Shadowmapping::LoadModel(const char* filepath, Entity& entity)
 	{
 		throw std::runtime_error("Failed to load material library: " + DIRECTORY_MODELS + model.mtllib);
 	}
-
-	gli::storage cube_texture_image = gli::load_dds((DIRECTORY_TEXTURES + material.map_Kd).c_str());
+	
+	gli::storage texture_image = gli::load_dds((DIRECTORY_TEXTURES + material.map_Kd).c_str());
 	glGenTextures(1, &entity.texture);
 	glBindTexture(GL_TEXTURE_2D, entity.texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, cube_texture_image.dimensions(0).x, cube_texture_image.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, cube_texture_image.data());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, texture_image.dimensions(0).x, texture_image.dimensions(0).y, 0, GL_BGR, GL_UNSIGNED_BYTE, texture_image.data());
 
 	// Setup the instance buffer.
 	glGenBuffers(1, &entity.uniform_buffer);
@@ -441,9 +441,9 @@ void Shadowmapping::UpdateCamera(float dt)
 
 void Shadowmapping::UpdateScene(float dt)
 {
-	cube_angle += CUBE_ROTATION_SPEED * dt;
-	cube.uniform_data.model_matrix = glm::rotate(cube_angle, glm::vec3(0.0f, 1.0f, 0.0f));
-	cube.uniform_data.normal_matrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(cube.uniform_data.model_matrix))));
+	model_angle += MODEL_ROTATION_SPEED * dt;
+	model.uniform_data.model_matrix = glm::rotate(model_angle, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::scale(glm::vec3(0.05f, 0.05f, 0.05f));
+	model.uniform_data.normal_matrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(model.uniform_data.model_matrix))));
 
 	if (input_state_current.keys[SDL_SCANCODE_P] && !input_state_previous.keys[SDL_SCANCODE_P])
 	{
@@ -523,12 +523,12 @@ void Shadowmapping::RenderScene()
 	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_DIFFUSE);
 	glBindSampler(TEXTURE_UNIT_DIFFUSE, diffuse_sampler);
 
-	// Draw the cube.
-	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, cube.uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &cube.uniform_data, GL_DYNAMIC_DRAW);
-	glBindTexture(GL_TEXTURE_2D, cube.texture);
-	glBindVertexArray(cube.vao);
-	glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);
+	// Draw the model.
+	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, model.uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &model.uniform_data, GL_DYNAMIC_DRAW);
+	glBindTexture(GL_TEXTURE_2D, model.texture);
+	glBindVertexArray(model.vao);
+	glDrawArrays(GL_TRIANGLES, 0, model.vertex_count);
 
 	// Draw the plane.
 	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, plane.uniform_buffer);
@@ -569,16 +569,16 @@ void Shadowmapping::RenderDepth()
 
 		glUseProgram(depth_program);
 
-		// Render the cube. Hijack the normal matrix uniform location for the light projection view matrix.
-		UniformBufferPerInstance depth_uniform_data = cube.uniform_data;
+		// Render the model. Hijack the normal matrix uniform location for the light projection view matrix.
+		UniformBufferPerInstance depth_uniform_data = model.uniform_data;
 		depth_uniform_data.normal_matrix = uniform_data_constant.spot_lights[i].light_projection_view_matrix;
-		glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, cube.uniform_buffer);
+		glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, model.uniform_buffer);
 		glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &depth_uniform_data, GL_DYNAMIC_DRAW);
 
-		glBindVertexArray(cube.vao);
+		glBindVertexArray(model.vao);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
-		glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);
+		glDrawArrays(GL_TRIANGLES, 0, model.vertex_count);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
 
@@ -628,10 +628,9 @@ void Shadowmapping::UpdateShadowmapResources(int resolution_index, int spot_ligh
 		glm::vec3 facing = glm::normalize(-position);
 
 		// Calculate the spot light's view matrix.
-		// TODO: Check whether x has to be 0.1f.
 		glm::mat4 view = glm::lookAt(position,
 			position + facing,
-			glm::vec3(0.1f, 1.0f, 0.0f));
+			glm::vec3(0.0f, 1.0f, 0.0f));
 
 		uniform_data_constant.spot_lights[i].position_W = glm::vec4(position, 1.0f);
 		uniform_data_constant.spot_lights[i].direction_W = glm::vec4(facing, 0.0f);

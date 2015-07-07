@@ -5,7 +5,7 @@
 	Author: Lars Woxberg
 	Year: 2015
 
-	This lab demonstrates the shadow mapping technique: a rotating cube casts shadows on a plane beneath it.
+	This lab demonstrates the shadow mapping technique: a rotating model casts shadows on a plane beneath it.
 
 	Camera controls:
 		Move: W, A, S, D.
@@ -34,7 +34,7 @@ const std::string DIRECTORY_ASSETS_ROOT = "../../../assets/";
 const std::string DIRECTORY_SHADERS = "../../../code/shadowmapping/shaders/";
 const std::string DIRECTORY_MODELS = DIRECTORY_ASSETS_ROOT + "models/";
 const std::string DIRECTORY_TEXTURES = DIRECTORY_ASSETS_ROOT + "textures/";
-const std::string FILE_CUBE_MODEL = "crate.obj";
+const std::string FILE_MODEL = "bth.obj";
 const std::string FILE_PLANE_MODEL = "plane.obj";
 const std::string FILE_MESH_VS = "mesh_textured_shadow.vert";
 const std::string FILE_MESH_FS = "mesh_textured_shadow.frag";
@@ -64,7 +64,7 @@ const float PERSPECTIVE_FAR = 100.0f;
 const float PERSPECTIVE_FOV = glm::radians(75.0f);
 const float CAMERA_SENSITIVITY = 0.005f;
 const float CAMERA_MOVE_SPEED = 10.0f;
-const float CUBE_ROTATION_SPEED = 1.0f;
+const float MODEL_ROTATION_SPEED = 1.0f;
 
 const int REPORT_TICK_COUNT = 128;
 
@@ -146,8 +146,8 @@ private:
 	InputState input_state_previous;
 	UniformBufferConstant uniform_data_constant;
 	UniformBufferPerFrame uniform_data_frame;
-	float cube_angle;
-	Entity cube;
+	float model_angle;
+	Entity model;
 	Entity plane;
 	GLuint mesh_vs;
 	GLuint mesh_fs;

@@ -248,7 +248,7 @@ void Lighting::SetupResources()
 	gli::storage cube_texture_image = gli::load_dds((DIRECTORY_TEXTURES + cube_material.map_Kd).c_str());
 	glGenTextures(1, &cube_texture);
 	glBindTexture(GL_TEXTURE_2D, cube_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, cube_texture_image.dimensions(0).x, cube_texture_image.dimensions(0).y, 0, GL_RGB, GL_UNSIGNED_BYTE, cube_texture_image.data());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, cube_texture_image.dimensions(0).x, cube_texture_image.dimensions(0).y, 0, GL_BGR, GL_UNSIGNED_BYTE, cube_texture_image.data());
 
 	// Setup the instance buffer.
 	uniform_data_cube.material_specular_color = glm::vec4(cube_material.Ks, cube_material.Ns);

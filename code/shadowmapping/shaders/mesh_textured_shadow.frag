@@ -79,7 +79,21 @@ float CalculateShadowFactor(int light_index)
 	vec3 position_L = vs_position_L[light_index].xyz / vs_position_L[light_index].w;
 	vec4 shadowcoords = vec4(position_L.s, position_L.t, light_index, position_L.z + EPSILON);
 
-	return texture(sampler_shadowmap, shadowcoords).r;
+	ivec3 shadowmap_size = textureSize(sampler_shadowmap, 0);
+	float offset_x = 1.0f / shadowmap_size.x;
+	float offset_y = 1.0f / shadowmap_size.y;
+
+	float factor = 0.0f;
+	for (int y = -1; y <= 1; ++y)
+	{
+		for (int x = -1; x <= 1; ++x)
+		{
+			vec4 offset = vec4(x * offset_x, y * offset_y, 0, 0);
+			factor += texture(sampler_shadowmap, shadowcoords + offset);
+		}
+	}
+
+	return factor / 9.0f;
 }
 
 void AddSpotLightContribution(int light_index, vec3 surface_color, vec3 surface_to_camera, inout vec3 diffuse, inout vec3 specular)

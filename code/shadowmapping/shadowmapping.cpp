@@ -220,6 +220,8 @@ void Shadowmapping::SetupResources()
 	glSamplerParameteri(shadowmap_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glSamplerParameteri(shadowmap_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glSamplerParameteri(shadowmap_sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glSamplerParameteri(shadowmap_sampler, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glSamplerParameteri(shadowmap_sampler, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
 	// Setup the camera starting attributes.
 	camera_frustum = Frustum(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)viewport_width, (float)viewport_height);
@@ -482,6 +484,10 @@ void Shadowmapping::RenderScene()
 	// Render the scene depth to the shadow maps.
 	RenderDepth();
 
+	// Cull back-faces. To avoid self-shadowing, the depth pass renders only back faces and the actual
+	// render pass renders the front faces.
+	glCullFace(GL_BACK);
+
 	// Clear the back buffer and start rendering the actual scene.
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -522,6 +528,9 @@ void Shadowmapping::RenderScene()
 
 void Shadowmapping::RenderDepth()
 {
+	// Cull the front faces to avoid self-shadowing.
+	glCullFace(GL_FRONT);
+
 	// Render the scene depth for each shadow map.
 	for (int i = 0; i < uniform_data_constant.spot_light_count; ++i)
 	{

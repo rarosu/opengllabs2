@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
 	int return_code = 0;
 	try
 	{
-		Shadowmapping lighting;
+		Shadowmapping shadowmapping;
 	}
 	catch (std::exception& e)
 	{

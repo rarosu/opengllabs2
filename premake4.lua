@@ -51,7 +51,7 @@ solution "opengllabs"
     project "project"
         kind "ConsoleApp"
         language "C++"
-        files { "code/project/**.hpp", "code/project/**.cpp" }
+        files { "code/project/**.hpp", "code/project/**.cpp", "code/project/shaders/**.vert", "code/project/shaders/**.frag", "code/project/shaders/**.geom" }
         objdir "build/project/obj/"
         links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         

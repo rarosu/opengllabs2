@@ -30,6 +30,7 @@ public:
 	~Terrain();
 
 	void Render();
+	float GetHeight(float x, float z) const;
 private:
 	static const float TERRAIN_WIDTH;
 	static const float TERRAIN_HEIGHT;

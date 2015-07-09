@@ -69,6 +69,7 @@ const std::string FILE_PARTICLE_GS = "particle.geom";
 const std::string FILE_PARTICLE_FS = "particle.frag";
 const std::string FILE_PARTICLE_SHAFT_TEXTURE = "shaft.dds";
 const std::string FILE_PARTICLE_SMOKE_TEXTURE = "smoke.dds";
+const std::string FILE_PARTICLE_ORBIT_TEXTURE = "orbit.dds";
 const std::string FILE_HEIGHTMAP_TEXTURE = "heightmap.dds";
 const std::string FILE_TERRAIN_VS = "terrain.vert";
 const std::string FILE_TERRAIN_FS = "terrain.frag";

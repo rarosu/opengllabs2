@@ -48,6 +48,7 @@ Project::Project()
 	, viewport_width(VIEWPORT_WIDTH_INITIAL)
 	, viewport_height(VIEWPORT_HEIGHT_INITIAL)
 	, running(true)
+	, fps_camera(true)
 {
 
 }
@@ -129,6 +130,9 @@ void Project::SetupContext()
 
 	// Set vsync enabled.
 	SDL_GL_SetSwapInterval(1);
+
+	// Hide the mouse cursor.
+	SDL_ShowCursor(0);
 }
 
 void Project::SetupResources()
@@ -136,7 +140,7 @@ void Project::SetupResources()
 	// Setup the camera starting attributes.
 	camera_frustum = Frustum(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)viewport_width, (float)viewport_height);
 	camera.SetProjection(camera_frustum.GetPerspectiveProjection());
-	camera.SetPosition(glm::vec3(32.0f, 30.0f, 32.0f));
+	camera.SetPosition(glm::vec3(64.0f, 30.0f, 64.0f));
 	camera.SetFacing(glm::vec3(0, 0, -1.0f));
 	camera.RecalculateMatrices();
 
@@ -171,7 +175,9 @@ void Project::SetupResources()
 	
 	// Setup the scene objects.
 	terrain = std::make_unique<Terrain>();
-	shaft_emitter = std::make_unique<ShaftEmitter>(glm::vec3(0.0f, 0.0f, -10.0f));
+	emitters[0] = std::make_unique<ShaftEmitter>(glm::vec3(64.0f, 2.0f + terrain->GetHeight(64.0f, 80.0f), 80.0f));
+	emitters[1] = std::make_unique<SmokeEmitter>(glm::vec3(80.0f, 2.0f + terrain->GetHeight(80.0f, 64.0f), 64.0f));
+	emitters[2] = std::make_unique<OrbitEmitter>(glm::vec3(80.0f, 2.0f + terrain->GetHeight(80.0f, 80.0f), 80.0f));
 }
 
 void Project::Run()
@@ -185,7 +191,10 @@ void Project::Run()
 		last_clock = current_clock;
 
 		HandleEvents();
-		UpdateCamera(dt);
+		if (fps_camera)
+			UpdateCameraFPS(dt);
+		else
+			UpdateCamera(dt);
 		UpdateScene(dt);
 		RenderScene();
 	}
@@ -296,9 +305,63 @@ void Project::UpdateCamera(float dt)
 	camera.RecalculateMatrices();
 }
 
+void Project::UpdateCameraFPS(float dt)
+{
+	// Update the facing.
+	int dx;
+	int dy;
+	SDL_GetMouseState(&dx, &dy);
+	dx = dx - (viewport_width / 2);
+	dy = dy - (viewport_height / 2);
+
+	glm::vec3 facing = camera.GetFacing();
+	float yaw = std::atan2(-facing.z, facing.x);
+	float pitch = std::acos(facing.y);
+
+	yaw -= dx * CAMERA_SENSITIVITY;
+	pitch += dy * CAMERA_SENSITIVITY;
+	pitch = glm::clamp(pitch, 0.01f, 3.13f);
+
+	float h = std::sin(pitch);
+	facing.x = h * std::cos(yaw);
+	facing.y = std::cos(pitch);
+	facing.z = -h * std::sin(yaw);
+
+	camera.SetFacing(facing);
+
+	SDL_WarpMouseInWindow(window, viewport_width / 2, viewport_height / 2);
+
+	// Update the movement.
+	glm::vec3 displacement = camera.GetPosition();
+	glm::vec3 direction = glm::normalize(glm::vec3(camera.GetFacing().x, 0.0f, camera.GetFacing().z));
+	glm::vec3 right = glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f));
+	if (input_state_current.keys[SDL_SCANCODE_W] || input_state_current.keys[SDL_SCANCODE_UP])
+		displacement += direction * CAMERA_MOVE_SPEED * dt;
+	if (input_state_current.keys[SDL_SCANCODE_S] || input_state_current.keys[SDL_SCANCODE_DOWN])
+		displacement -= direction * CAMERA_MOVE_SPEED * dt;
+	if (input_state_current.keys[SDL_SCANCODE_A] || input_state_current.keys[SDL_SCANCODE_LEFT])
+		displacement -= right * CAMERA_MOVE_SPEED * dt;
+	if (input_state_current.keys[SDL_SCANCODE_D] || input_state_current.keys[SDL_SCANCODE_RIGHT])
+		displacement += right * CAMERA_MOVE_SPEED * dt;
+	
+	displacement.y = 4.0f + terrain->GetHeight(displacement.x, displacement.z);
+	
+	camera.SetPosition(displacement);
+	camera.RecalculateMatrices();
+}
+
 void Project::UpdateScene(float dt)
 {
-	shaft_emitter->Update(dt);
+	if (input_state_current.keys[SDL_SCANCODE_ESCAPE] && !input_state_previous.keys[SDL_SCANCODE_ESCAPE])
+		running = false;
+	if (input_state_current.keys[SDL_SCANCODE_C] && !input_state_previous.keys[SDL_SCANCODE_C])
+	{
+		fps_camera = !fps_camera;
+		SDL_ShowCursor(fps_camera ? 0 : 1);
+	}
+
+	for (int i = 0; i < 3; ++i)
+		emitters[i]->Update(dt);
 }
 
 void Project::RenderScene()
@@ -314,7 +377,8 @@ void Project::RenderScene()
 
 	// Render the scene objects.
 	terrain->Render();
-	shaft_emitter->Render();
+	for (int i = 0; i < 3; ++i)
+		emitters[i]->Render();
 
 	// Swap the back and front buffers.
 	SDL_GL_SwapWindow(window);

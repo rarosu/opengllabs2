@@ -17,33 +17,16 @@ float RandomFloat();
 class ParticleEmitter
 {
 public:
+	virtual ~ParticleEmitter();
 	virtual void Update(float dt) = 0;
-	virtual void Render() = 0;
-private:
-	
-};
-
-/*
-	Emits particles in a stream upwards.
-*/
-class ShaftEmitter : public ParticleEmitter
-{
-public:
-	ShaftEmitter(const glm::vec3& origin);
-	~ShaftEmitter();
-
-	void Update(float dt);
 	void Render();
+protected:
+	ParticleEmitter(const glm::vec3& origin, int particle_count, const std::string& texture_file);
+
+	void GenerateBuffers(glm::vec3* positions);
+	void UpdateBuffers(glm::vec3* positions);
 private:
-	static const int PARTICLE_COUNT = 128;
-
 	glm::vec3 origin;
-	glm::vec3 particle_positions[PARTICLE_COUNT];
-	glm::vec3 particle_velocities[PARTICLE_COUNT];
-	glm::vec3 particle_accelerations[PARTICLE_COUNT];
-	float particle_time_lived[PARTICLE_COUNT];
-	float particle_time_death[PARTICLE_COUNT];
-
 	UniformBufferPerInstance uniform_data;
 	GLuint position_vbo;
 	GLuint vao;
@@ -54,7 +37,26 @@ private:
 	GLuint texture;
 	GLuint sampler;
 	GLuint uniform_buffer;
-	
+	GLuint particle_count;
+};
+
+/*
+	Emits particles in a stream upwards.
+*/
+class ShaftEmitter : public ParticleEmitter
+{
+public:
+	ShaftEmitter(const glm::vec3& origin);
+
+	void Update(float dt);
+private:
+	static const int PARTICLE_COUNT = 128;
+
+	glm::vec3 particle_positions[PARTICLE_COUNT];
+	glm::vec3 particle_velocities[PARTICLE_COUNT];
+	glm::vec3 particle_accelerations[PARTICLE_COUNT];
+	float particle_time_lived[PARTICLE_COUNT];
+	float particle_time_death[PARTICLE_COUNT];
 	
 	void GenerateNewParticle(int index);
 };
@@ -64,7 +66,19 @@ private:
 */
 class SmokeEmitter : public ParticleEmitter
 {
+public:
+	SmokeEmitter(const glm::vec3& origin);
 
+	void Update(float dt);
+private:
+	static const int PARTICLE_COUNT = 128;
+
+	glm::vec3 particle_positions[PARTICLE_COUNT];
+	glm::vec3 particle_directions[PARTICLE_COUNT];
+	float particle_time_lived[PARTICLE_COUNT];
+	float particle_time_death[PARTICLE_COUNT];
+
+	void GenerateNewParticle(int index);
 };
 
 /*
@@ -72,5 +86,17 @@ class SmokeEmitter : public ParticleEmitter
 */
 class OrbitEmitter : public ParticleEmitter
 {
+public:
+	OrbitEmitter(const glm::vec3& origin);
 
+	void Update(float dt);
+private:
+	static const int PARTICLE_COUNT = 64;
+
+	glm::vec3 particle_positions[PARTICLE_COUNT];
+	glm::vec3 particle_orbit_planes[PARTICLE_COUNT];
+	float particle_radius[PARTICLE_COUNT];
+	float particle_angles[PARTICLE_COUNT];
+
+	void GenerateNewParticle(int index);
 };

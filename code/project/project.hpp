@@ -9,8 +9,13 @@
 	of particle systems and a free-moving camera.
 
 	Camera controls:
-		Move: W, A, S, D.
+		Move: W, A, S, D
 		Pan: Hold left mouse button and drag.
+	FPS Camera controls:
+		Move: W, A, S, D.
+		Pan: Move the mouse cursor
+	Toggle camera mode: C
+	Quit: Alt-F4 or Escape.
 */
 
 #pragma once
@@ -54,12 +59,13 @@ private:
 	unsigned int viewport_width;
 	unsigned int viewport_height;
 	bool running;
+	bool fps_camera;
 
 	UniformBufferConstant uniform_data_constant;
 	UniformBufferPerFrame uniform_data_frame;
 	GLuint uniform_buffer_constant;
 	GLuint uniform_buffer_frame;
-	std::unique_ptr<ShaftEmitter> shaft_emitter;
+	std::unique_ptr<ParticleEmitter> emitters[3];
 	std::unique_ptr<Terrain> terrain;
 
 	void SetupContext();
@@ -67,6 +73,7 @@ private:
 	void Run();
 	void HandleEvents();
 	void UpdateCamera(float dt);
+	void UpdateCameraFPS(float dt);
 	void UpdateScene(float dt);
 	void RenderScene();
 };

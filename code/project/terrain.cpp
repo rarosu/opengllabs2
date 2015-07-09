@@ -214,3 +214,35 @@ void Terrain::Render()
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT);
 }
+
+float lerp(float a, float b, float t)
+{
+	return a * t + b * (1.0f - t);
+}
+
+float bilerp(float a, float b, float c, float d, float s, float t)
+{
+	return lerp(lerp(a, b, s), lerp(c, d, s), t);
+}
+
+float Terrain::GetHeight(float x, float z) const
+{
+	float nx = x / TERRAIN_WIDTH;
+	float nz = z / TERRAIN_HEIGHT;
+
+	if (nx < 0 || nx >= 1.0f)
+		return 0.0f;
+	if (nz < 0 || nz >= 1.0f)
+		return 0.0f;
+
+	int x1 = glm::clamp(int(nx * Heightmap::HEIGHTMAP_RESOLUTION_X), 0, Heightmap::HEIGHTMAP_RESOLUTION_X - 1);
+	int x2 = glm::clamp(x1 + 1, 0, Heightmap::HEIGHTMAP_RESOLUTION_X - 1);
+
+	int y1 = glm::clamp(int(nz * Heightmap::HEIGHTMAP_RESOLUTION_Y), 0, Heightmap::HEIGHTMAP_RESOLUTION_Y - 1);
+	int y2 = glm::clamp(y1 + 1, 0, Heightmap::HEIGHTMAP_RESOLUTION_Y - 1);
+
+	float tx = float(x - x1);
+	float ty = float(z - y1);
+
+	return bilerp(heightmap.GetHeight(x1, y1), heightmap.GetHeight(x1, y2), heightmap.GetHeight(x2, y1), heightmap.GetHeight(x2, y2), ty, tx);
+}

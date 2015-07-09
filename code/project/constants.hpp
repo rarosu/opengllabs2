@@ -72,15 +72,19 @@ const std::string FILE_PARTICLE_SMOKE_TEXTURE = "smoke.dds";
 const std::string FILE_HEIGHTMAP_TEXTURE = "heightmap.dds";
 const std::string FILE_TERRAIN_VS = "terrain.vert";
 const std::string FILE_TERRAIN_FS = "terrain.frag";
-const std::string FILE_TERRAIN_TEXTURE_1 = "terrain_1.dds";
-const std::string FILE_TERRAIN_TEXTURE_2 = "terrain_2.dds";
-const std::string FILE_TERRAIN_TEXTURE_3 = "terrain_3.dds";
+const std::string FILE_TERRAIN_TEXTURE_1 = "stk_generic_grassb.dds";
+const std::string FILE_TERRAIN_TEXTURE_2 = "stktex_generic_earth_a.dds";
+const std::string FILE_TERRAIN_TEXTURE_3 = "dirt_5.dds";
 const std::string FILE_TERRAIN_MASK = "terrain_mask.dds";
 
 const int UNIFORM_BINDING_CONSTANT = 0;
 const int UNIFORM_BINDING_FRAME = 1;
 const int UNIFORM_BINDING_INSTANCE = 2;
 const int TEXTURE_UNIT_DIFFUSE = 0;
+const int TEXTURE_UNIT_TERRAIN_MASK = 0;
+const int TEXTURE_UNIT_TERRAIN_1 = 1;
+const int TEXTURE_UNIT_TERRAIN_2 = 2;
+const int TEXTURE_UNIT_TERRAIN_3 = 3;
 
 const int VIEWPORT_WIDTH_INITIAL = 800;
 const int VIEWPORT_HEIGHT_INITIAL = 600;

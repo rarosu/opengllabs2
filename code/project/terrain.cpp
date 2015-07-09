@@ -84,39 +84,39 @@ Terrain::Terrain()
 
 			positions[count] = glm::vec3(x * xstride * TERRAIN_WIDTH, heights[0], y * ystride * TERRAIN_HEIGHT);
 			normals[count] = heightmap.GetNormal(x, y);
-			texcoords[count] = glm::vec2(x * xstride, 1.0f - y * ystride);
+			texcoords[count] = glm::vec2(x * xstride, y * ystride);
 			count++;
 
 			y++;
 			positions[count] = glm::vec3(x * xstride * TERRAIN_WIDTH, heights[3], y * ystride * TERRAIN_HEIGHT);
 			normals[count] = heightmap.GetNormal(x, y);
-			texcoords[count] = glm::vec2(x * xstride, 1.0f - y * ystride);
+			texcoords[count] = glm::vec2(x * xstride, y * ystride);
 			count++;
 
 			x++;
 			positions[count] = glm::vec3(x * xstride * TERRAIN_WIDTH, heights[2], y * ystride * TERRAIN_HEIGHT);
 			normals[count] = heightmap.GetNormal(x, y);
-			texcoords[count] = glm::vec2(x * xstride, 1.0f - y * ystride);
+			texcoords[count] = glm::vec2(x * xstride, y * ystride);
 			count++;
 
 			y--;
 			x--;
 			positions[count] = glm::vec3(x * xstride * TERRAIN_WIDTH, heights[0], y * ystride * TERRAIN_HEIGHT);
 			normals[count] = heightmap.GetNormal(x, y);
-			texcoords[count] = glm::vec2(x * xstride, 1.0f - y * ystride);
+			texcoords[count] = glm::vec2(x * xstride, y * ystride);
 			count++;
 
 			x++;
 			y++;
 			positions[count] = glm::vec3(x * xstride * TERRAIN_WIDTH, heights[2], y * ystride * TERRAIN_HEIGHT);
 			normals[count] = heightmap.GetNormal(x, y);
-			texcoords[count] = glm::vec2(x * xstride, 1.0f - y * ystride);
+			texcoords[count] = glm::vec2(x * xstride, y * ystride);
 			count++;
 
 			y--;
 			positions[count] = glm::vec3(x * xstride * TERRAIN_WIDTH, heights[1], y * ystride * TERRAIN_HEIGHT);
 			normals[count] = heightmap.GetNormal(x, y);
-			texcoords[count] = glm::vec2(x * xstride, 1.0f - y * ystride);
+			texcoords[count] = glm::vec2(x * xstride, y * ystride);
 			count++;
 		}
 	}
@@ -155,10 +155,34 @@ Terrain::Terrain()
 	// Setup the uniform buffer.
 	glGenBuffers(1, &uniform_buffer);
 
-	uniform_data.material_specular_color = glm::vec4(0.4f, 0.4f, 0.4f, 10.0f);
+	uniform_data.material_specular_color = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, uniform_buffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerInstance), &uniform_data, GL_STATIC_DRAW);
+
+	// Load the textures.
+	const std::string filenames[] = { FILE_TERRAIN_TEXTURE_1, FILE_TERRAIN_TEXTURE_2, FILE_TERRAIN_TEXTURE_3 };
+	for (int i = 0; i < 3; ++i)
+	{
+		gli::storage texture_image = gli::load_dds((DIRECTORY_TEXTURES + filenames[i]).c_str());
+
+		glGenTextures(1, &textures[i]);
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, texture_image.dimensions(0).x, texture_image.dimensions(0).y, 0, GL_BGR, GL_UNSIGNED_BYTE, texture_image.data());
+	}
+
+	gli::storage mask_image = gli::load_dds((DIRECTORY_TEXTURES + FILE_TERRAIN_MASK).c_str());
+	
+	glGenTextures(1, &mask_texture);
+	glBindTexture(GL_TEXTURE_2D, mask_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, mask_image.dimensions(0).x, mask_image.dimensions(0).y, 0, GL_BGR, GL_UNSIGNED_BYTE, mask_image.data());
+
+	// Create the sampler.
+	glGenSamplers(1, &sampler);
+	glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
 
 Terrain::~Terrain()
@@ -169,6 +193,22 @@ Terrain::~Terrain()
 void Terrain::Render()
 {
 	glUseProgram(terrain_program);
+
+	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_TERRAIN_MASK);
+	glBindSampler(TEXTURE_UNIT_TERRAIN_MASK, sampler);
+	glBindTexture(GL_TEXTURE_2D, mask_texture);
+
+	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_TERRAIN_1);
+	glBindSampler(TEXTURE_UNIT_TERRAIN_1, sampler);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+
+	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_TERRAIN_2);
+	glBindSampler(TEXTURE_UNIT_TERRAIN_2, sampler);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+
+	glActiveTexture(GL_TEXTURE0 + TEXTURE_UNIT_TERRAIN_3);
+	glBindSampler(TEXTURE_UNIT_TERRAIN_3, sampler);
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_INSTANCE, uniform_buffer);
 	glBindVertexArray(vao);

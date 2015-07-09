@@ -59,6 +59,11 @@ layout(binding = 2, std140) uniform PerInstance
     vec4 material_specular_color;
 };
 
+layout(binding = 0) uniform sampler2D sampler_mask;
+layout(binding = 1) uniform sampler2D sampler_terrain_1;
+layout(binding = 2) uniform sampler2D sampler_terrain_2;
+layout(binding = 3) uniform sampler2D sampler_terrain_3;
+
 void AddDirectionalLightContribution(DirectionalLight light, vec3 surface_color, vec3 surface_to_camera, inout vec3 diffuse, inout vec3 specular);
 void AddPointLightContribution(PointLight light, vec3 surface_color, vec3 surface_to_camera, inout vec3 diffuse, inout vec3 specular);
 void AddSpotLightContribution(SpotLight light, vec3 surface_color, vec3 surface_to_camera, inout vec3 diffuse, inout vec3 specular);
@@ -68,7 +73,12 @@ void main()
     vec3 ambient = vec3(0);
     vec3 diffuse = vec3(0);
     vec3 specular = vec3(0);
-	vec3 surface_color = vec3(1.0f, 1.0f, 1.0f);
+	//vec3 surface_color = vec3(1.0f, 1.0f, 1.0f);
+	//vec3 surface_color = texture(sampler_terrain_1, vs_texcoord).rgb;
+	vec3 mask_value = texture(sampler_mask, vs_texcoord).rgb;
+	vec3 surface_color = texture(sampler_terrain_1, vs_texcoord).rgb * mask_value.r +
+						 texture(sampler_terrain_2, vs_texcoord).rgb * mask_value.g +
+						 texture(sampler_terrain_3, vs_texcoord).rgb * mask_value.b;
     vec3 surface_to_camera = camera_position_W.xyz - vs_position_W;
     float surface_to_camera_distance = length(surface_to_camera);
 

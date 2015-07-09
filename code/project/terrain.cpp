@@ -69,13 +69,13 @@ Terrain::Terrain()
 	// Generate the vertex data.
 	float xstride = 1.0f / Heightmap::HEIGHTMAP_RESOLUTION_X;
 	float ystride = 1.0f / Heightmap::HEIGHTMAP_RESOLUTION_Y;
-	glm::vec3 positions[VERTEX_COUNT];
-	glm::vec3 normals[VERTEX_COUNT];
-	glm::vec2 texcoords[VERTEX_COUNT];
+	std::vector<glm::vec3> positions(VERTEX_COUNT);
+	std::vector<glm::vec3> normals(VERTEX_COUNT);
+	std::vector<glm::vec2> texcoords(VERTEX_COUNT);
 	int count = 0;
-	for (int quady = 0; quady < Heightmap::HEIGHTMAP_RESOLUTION_Y / 2; ++quady)
+	for (int quady = 0; quady < Heightmap::HEIGHTMAP_RESOLUTION_Y - 1; ++quady)
 	{
-		for (int quadx = 0; quadx < Heightmap::HEIGHTMAP_RESOLUTION_X / 2; ++quadx)
+		for (int quadx = 0; quadx < Heightmap::HEIGHTMAP_RESOLUTION_X - 1; ++quadx)
 		{
 			int x = quadx;
 			int y = quady;
@@ -127,17 +127,17 @@ Terrain::Terrain()
 	
 	glGenBuffers(1, &position_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, position_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * VERTEX_COUNT, positions, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * VERTEX_COUNT, &positions[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glGenBuffers(1, &normal_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * VERTEX_COUNT, normals, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * VERTEX_COUNT, &normals[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glGenBuffers(1, &texcoord_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, texcoord_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * VERTEX_COUNT, texcoords, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * VERTEX_COUNT, &texcoords[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glEnableVertexAttribArray(0);

@@ -33,7 +33,7 @@ public:
 private:
 	static const float TERRAIN_WIDTH;
 	static const float TERRAIN_HEIGHT;
-	static const int VERTEX_COUNT = Heightmap::HEIGHTMAP_RESOLUTION_Y * Heightmap::HEIGHTMAP_RESOLUTION_Y * 3 / 2;
+	static const int VERTEX_COUNT = (Heightmap::HEIGHTMAP_RESOLUTION_Y - 1) * (Heightmap::HEIGHTMAP_RESOLUTION_Y - 1) * 6;
 
 	Heightmap heightmap;
 	UniformBufferPerInstance uniform_data;

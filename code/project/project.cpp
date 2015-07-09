@@ -136,7 +136,7 @@ void Project::SetupResources()
 	// Setup the camera starting attributes.
 	camera_frustum = Frustum(PERSPECTIVE_NEAR, PERSPECTIVE_FAR, PERSPECTIVE_FOV, (float)viewport_width, (float)viewport_height);
 	camera.SetProjection(camera_frustum.GetPerspectiveProjection());
-	camera.SetPosition(glm::vec3(0, 5.0f, 5.0f));
+	camera.SetPosition(glm::vec3(32.0f, 30.0f, 32.0f));
 	camera.SetFacing(glm::vec3(0, 0, -1.0f));
 	camera.RecalculateMatrices();
 

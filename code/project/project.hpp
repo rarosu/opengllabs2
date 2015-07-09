@@ -26,6 +26,7 @@
 #include <memory>
 #include "constants.hpp"
 #include "particle.hpp"
+#include "terrain.hpp"
 
 struct InputState
 {
@@ -54,9 +55,12 @@ private:
 	unsigned int viewport_height;
 	bool running;
 
+	UniformBufferConstant uniform_data_constant;
 	UniformBufferPerFrame uniform_data_frame;
+	GLuint uniform_buffer_constant;
 	GLuint uniform_buffer_frame;
 	std::unique_ptr<ShaftEmitter> shaft_emitter;
+	std::unique_ptr<Terrain> terrain;
 
 	void SetupContext();
 	void SetupResources();

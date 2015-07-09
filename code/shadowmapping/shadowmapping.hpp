@@ -25,6 +25,7 @@
 #include <common/camera.h>
 #include <common/timer.h>
 #include <SDL2/SDL.h>
+#define NOMINMAX
 #include <GL/gl3w.h>
 #include <glm/glm.hpp>
 #include <string>

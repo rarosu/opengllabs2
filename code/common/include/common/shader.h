@@ -1,5 +1,6 @@
 #pragma once
 
+#define NOMINMAX
 #include <GL/gl3w.h>
 
 GLuint CompileShaderFromFile(const char* filepath, GLenum shaderType);

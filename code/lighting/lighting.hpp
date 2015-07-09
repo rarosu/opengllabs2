@@ -16,6 +16,7 @@
 
 #define GLM_FORCE_RADIANS
 
+#define NOMINMAX
 #include <GL/gl3w.h>
 #include <glm/glm.hpp>
 #include <common/model.h>

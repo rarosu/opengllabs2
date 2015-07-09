@@ -140,10 +140,37 @@ void Project::SetupResources()
 	camera.SetFacing(glm::vec3(0, 0, -1.0f));
 	camera.RecalculateMatrices();
 
-	// Create and initialize the frame buffer.
+	// Create and initialize the constant and frame buffers.
+	glGenBuffers(1, &uniform_buffer_constant);
 	glGenBuffers(1, &uniform_buffer_frame);
+
+	uniform_data_constant.ambient_light.intensity = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	uniform_data_constant.directional_lights[0].direction_W = glm::normalize(glm::vec4(1.0f, -1.0f, 0.0f, 0.0f));
+	uniform_data_constant.directional_lights[0].intensity = glm::vec4(0.4f, 0.3f, 0.0f, 1.0f);
+	uniform_data_constant.directional_lights[1].direction_W = glm::normalize(glm::vec4(0.0f, -1.0f, -1.0f, 0.0f));
+	uniform_data_constant.directional_lights[1].intensity = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
+	uniform_data_constant.point_lights[0].position_W = glm::vec4(40.0f, 15.0f, 20.0f, 1.0f);
+	uniform_data_constant.point_lights[0].intensity = glm::vec4(0.6f, 0.0f, 0.0f, 1.0f);
+	uniform_data_constant.point_lights[0].cutoff = 20.0f;
+	uniform_data_constant.point_lights[1].position_W = glm::vec4(10.0f, 35.0f, 15.0f, 1.0f);
+	uniform_data_constant.point_lights[1].intensity = glm::vec4(0.0f, 0.0f, 0.6f, 1.0f);
+	uniform_data_constant.point_lights[1].cutoff = 20.0f;
+	uniform_data_constant.spot_lights[0].position_W = glm::vec4(5.0f, 5.0f, 0.0f, 1.0f);
+	uniform_data_constant.spot_lights[0].direction_W = glm::normalize(glm::vec4(-1.0f, -1.0f, 0.0f, 1.0f));
+	uniform_data_constant.spot_lights[0].intensity = glm::vec4(0.0f, 0.6f, 0.4f, 1.0f);
+	uniform_data_constant.spot_lights[0].cutoff = 20.0f;
+	uniform_data_constant.spot_lights[0].angle = glm::radians(22.5f);
+	uniform_data_constant.spot_lights[1].position_W = glm::vec4(45.0f, 15.0f, 30.0f, 1.0f);
+	uniform_data_constant.spot_lights[1].direction_W = glm::normalize(glm::vec4(0.5f, -1.0f, 0.5f, 1.0f));
+	uniform_data_constant.spot_lights[1].intensity = glm::vec4(0.6f, 0.6f, 0.4f, 1.0f);
+	uniform_data_constant.spot_lights[1].cutoff = 20.0f;
+	uniform_data_constant.spot_lights[1].angle = glm::radians(22.5f);
+
+	glBindBufferBase(GL_UNIFORM_BUFFER, UNIFORM_BINDING_CONSTANT, uniform_buffer_constant);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferConstant), &uniform_data_constant, GL_STATIC_DRAW);
 	
 	// Setup the scene objects.
+	terrain = std::make_unique<Terrain>();
 	shaft_emitter = std::make_unique<ShaftEmitter>(glm::vec3(0.0f, 0.0f, -10.0f));
 }
 
@@ -286,6 +313,7 @@ void Project::RenderScene()
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformBufferPerFrame), &uniform_data_frame, GL_DYNAMIC_DRAW);
 
 	// Render the scene objects.
+	terrain->Render();
 	shaft_emitter->Render();
 
 	// Swap the back and front buffers.

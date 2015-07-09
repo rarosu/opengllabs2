@@ -2,6 +2,48 @@
 
 #include <string>
 #include <glm/glm.hpp>
+#include <gli/gli.hpp>
+
+struct AmbientLight
+{
+	glm::vec4 intensity;
+};
+
+struct DirectionalLight
+{
+	glm::vec4 direction_W;
+	glm::vec4 intensity;
+};
+
+struct PointLight
+{
+	glm::vec4 position_W;
+	glm::vec4 intensity;
+	float cutoff;
+	float padding[3];
+};
+
+struct SpotLight
+{
+	glm::vec4 position_W;
+	glm::vec4 direction_W;
+	glm::vec4 intensity;
+	float cutoff;
+	float angle;
+	float padding[2];
+};
+
+const int POINT_LIGHT_COUNT = 2;
+const int DIRECTIONAL_LIGHT_COUNT = 2;
+const int SPOT_LIGHT_COUNT = 2;
+
+struct UniformBufferConstant
+{
+	AmbientLight ambient_light;
+	DirectionalLight directional_lights[DIRECTIONAL_LIGHT_COUNT];
+	PointLight point_lights[POINT_LIGHT_COUNT];
+	SpotLight spot_lights[SPOT_LIGHT_COUNT];
+};
 
 struct UniformBufferPerFrame
 {
@@ -27,6 +69,13 @@ const std::string FILE_PARTICLE_GS = "particle.geom";
 const std::string FILE_PARTICLE_FS = "particle.frag";
 const std::string FILE_PARTICLE_SHAFT_TEXTURE = "shaft.dds";
 const std::string FILE_PARTICLE_SMOKE_TEXTURE = "smoke.dds";
+const std::string FILE_HEIGHTMAP_TEXTURE = "heightmap.dds";
+const std::string FILE_TERRAIN_VS = "terrain.vert";
+const std::string FILE_TERRAIN_FS = "terrain.frag";
+const std::string FILE_TERRAIN_TEXTURE_1 = "terrain_1.dds";
+const std::string FILE_TERRAIN_TEXTURE_2 = "terrain_2.dds";
+const std::string FILE_TERRAIN_TEXTURE_3 = "terrain_3.dds";
+const std::string FILE_TERRAIN_MASK = "terrain_mask.dds";
 
 const int UNIFORM_BINDING_CONSTANT = 0;
 const int UNIFORM_BINDING_FRAME = 1;

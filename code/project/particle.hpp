@@ -2,6 +2,7 @@
 
 #include <string>
 #include <glm/glm.hpp>
+#define NOMINMAX
 #include <GL/gl3w.h>
 #include "constants.hpp"
 

@@ -1,6 +1,5 @@
 #include "particle.hpp"
 #include <common/shader.h>
-#include <gli/gli.hpp>
 #include <glm/gtx/transform.hpp>
 #include <iostream>
 

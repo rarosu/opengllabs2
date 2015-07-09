@@ -88,7 +88,22 @@ const glm::mat4& Camera::GetProjectionView() const
 
 void Camera::RecalculateMatrices()
 {
-	view = glm::lookAt(position, position + facing, glm::vec3(0, 1, 0));
+	glm::vec3 right = glm::normalize(glm::cross(facing, glm::vec3(0.0f, 1.0f, 0.0f)));
+	glm::vec3 up = glm::cross(right, facing);
+	
+	view = glm::mat4(1.0f);
+	view[0][0] = right.x;
+	view[1][0] = right.y;
+	view[2][0] = right.z;
+	view[0][1] = up.x;
+	view[1][1] = up.y;
+	view[2][1] = up.z;
+	view[0][2] = -facing.x;
+	view[1][2] = -facing.y;
+	view[2][2] = -facing.z;
+	view[3][0] = -glm::dot(right, position);
+	view[3][1] = -glm::dot(up, position);
+	view[3][2] = glm::dot(facing, position);
 
 	projectionView = projection * view;
 }

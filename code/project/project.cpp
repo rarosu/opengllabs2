@@ -191,10 +191,14 @@ void Project::Run()
 		last_clock = current_clock;
 
 		HandleEvents();
-		if (fps_camera)
-			UpdateCameraFPS(dt);
-		else
-			UpdateCamera(dt);
+		if (SDL_GetMouseFocus() == window)
+		{
+			if (fps_camera)
+				UpdateCameraFPS(dt);
+			else
+				UpdateCamera(dt);
+		}
+		
 		UpdateScene(dt);
 		RenderScene();
 	}

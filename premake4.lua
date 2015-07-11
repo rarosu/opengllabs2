@@ -58,7 +58,7 @@ solution "opengllabs"
     project "objviewer"
         kind "ConsoleApp"
         language "C++"
-        files { "code/objviewer/**.hpp", "code/objviewer/**.cpp" }
+        files { "code/objviewer/**.hpp", "code/objviewer/**.cpp", "code/objviewer/shaders/**.vert", "code/objviewer/shaders/**.frag" }
         objdir "build/objviewer/obj/"
         links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         

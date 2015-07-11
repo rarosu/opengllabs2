@@ -137,16 +137,6 @@ void Lighting::SetupContext()
 		throw std::runtime_error(std::string("OpenGL 4.4 is not supported"));
 	}
 
-
-	//glewExperimental = GL_TRUE;
-	//GLenum glewResult = glewInit();
-	//if (glewResult != GLEW_OK)
-	//{
-	//	throw std::runtime_error(std::string("Failed to initialize GLEW: ") + (const char*)glewGetErrorString(glewResult));
-	//}
-	//glGetError(); // Clear the error buffer caused by GLEW.
-
-
 	// Setup an error callback function.
 	glDebugMessageCallback(OutputDebugMessage, nullptr);
 

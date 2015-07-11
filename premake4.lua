@@ -37,7 +37,7 @@ solution "opengllabs"
     project "raytracing"
         kind "ConsoleApp"
         language "C++"
-        files { "code/raytracing/**.hpp", "code/raytracing/**.cpp" }
+        files { "code/raytracing/**.hpp", "code/raytracing/**.cpp", "code/raytracing/shaders/**.vert", "code/raytracing/shaders/**.frag" }
         objdir "build/raytracing/obj/"
         links { "opengl32", "SDL2", "SDL2main", "gl3w", "common" }
         

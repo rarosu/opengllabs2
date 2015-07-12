@@ -108,6 +108,8 @@ void Raytracing::SetupContext()
 	glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
 	glViewport(0, 0, viewport_width, viewport_height);
 	glEnable(GL_CULL_FACE);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	{
 		int major;

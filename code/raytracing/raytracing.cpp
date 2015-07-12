@@ -178,19 +178,19 @@ void Raytracing::SetupResources()
 	spheres[0].color = glm::vec3(1.0f, 0.0f, 0.0f);
 	
 	spheres[1].geometry = Sphere(glm::vec3(5.0f, 0.0f, -10.0f), 2.0f);
-	spheres[1].color = glm::vec3(0.8f, 0.2f, 0.0f);
+	spheres[1].color = glm::vec3(0.8f, 0.5f, 0.0f);
 
 	boxes[0].geometry = OBB(glm::vec3(-5.0f, 0.0f, -10.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 2.0f, 0.0f), 2.0f);
 	boxes[0].color = glm::vec3(0.0f, 1.0f, 0.0f);
 
 	boxes[1].geometry = OBB(glm::vec3(-5.0f, 5.0f, -10.0f), glm::vec3(1.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, -1.0f), 3.0f);
-	boxes[1].color = glm::vec3(0.2f, 0.5f, 0.0f);
+	boxes[1].color = glm::vec3(0.5f, 0.8f, 0.0f);
 
-	triangles[0].geometry = Triangle(glm::vec3(0.0f, 5.0f, 5.0f), glm::vec3(0.0f, 7.0f, 7.0f), glm::vec3(0.0f, 5.0f, 7.0f));
+	triangles[0].geometry = Triangle(glm::vec3(0.0f, 5.0f, -5.0f), glm::vec3(0.0f, 7.0f, -7.0f), glm::vec3(4.0f, 7.0f, -7.0f));
 	triangles[0].color = glm::vec3(0.0f, 0.0f, 1.0f);
 
-	triangles[1].geometry = Triangle(glm::vec3(-10.0f, 5.0f, -13.0f), glm::vec3(-13.0f, 5.0f, -13.0f), glm::vec3(-10.0f, 8.0f, -13.0f));
-	triangles[1].color = glm::vec3(0.0f, 0.2f, 0.8f);
+	triangles[1].geometry = Triangle(glm::vec3(-8.0f, 5.0f, -13.0f), glm::vec3(-10.0f, 5.0f, -13.0f), glm::vec3(-8.0f, 8.0f, -13.0f));
+	triangles[1].color = glm::vec3(0.0f, 0.5f, 0.8f);
 
 	light.position = glm::vec3(0.0f, -3.0f, 0.0f);
 	light.color = glm::vec3(0.8f, 0.8f, 0.8f);

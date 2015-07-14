@@ -180,20 +180,20 @@ void Raytracing::SetupResources()
 	spheres[1].geometry = Sphere(glm::vec3(5.0f, 0.0f, -10.0f), 2.0f);
 	spheres[1].color = glm::vec3(0.8f, 0.5f, 0.0f);
 
-	boxes[0].geometry = OBB(glm::vec3(-5.0f, 0.0f, -10.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 2.0f, 0.0f), 2.0f);
+	boxes[0].geometry = OBB(glm::vec3(-5.0f, 0.0f, -10.0f), glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 2.0f, 1.0f), 2.0f);
 	boxes[0].color = glm::vec3(0.0f, 1.0f, 0.0f);
 
 	boxes[1].geometry = OBB(glm::vec3(-5.0f, 5.0f, -10.0f), glm::vec3(1.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, -1.0f), 3.0f);
 	boxes[1].color = glm::vec3(0.5f, 0.8f, 0.0f);
 
-	triangles[0].geometry = Triangle(glm::vec3(0.0f, 5.0f, -5.0f), glm::vec3(0.0f, 7.0f, -7.0f), glm::vec3(4.0f, 7.0f, -7.0f));
+	triangles[0].geometry = Triangle(glm::vec3(0.0f, 3.0f, -14.0f), glm::vec3(2.0f, 3.0f, -12.0f), glm::vec3(2.0f, 5.0f, -12.0f));
 	triangles[0].color = glm::vec3(0.0f, 0.0f, 1.0f);
 
-	triangles[1].geometry = Triangle(glm::vec3(-8.0f, 5.0f, -13.0f), glm::vec3(-10.0f, 5.0f, -13.0f), glm::vec3(-8.0f, 8.0f, -13.0f));
+	triangles[1].geometry = Triangle(glm::vec3(-8.0f, 3.0f, -12.0f), glm::vec3(-10.0f, 3.0f, -11.0f), glm::vec3(-8.0f, 5.0f, -11.0f));
 	triangles[1].color = glm::vec3(0.0f, 0.5f, 0.8f);
 
-	light.position = glm::vec3(0.0f, -3.0f, 0.0f);
-	light.color = glm::vec3(0.8f, 0.8f, 0.8f);
+	light.position = glm::vec3(-15.0f, 5.0f, -5.0f);
+	light.intensity = glm::vec3(0.8f, 0.8f, 0.8f);
 	light.cutoff = 15.0f;
 
 	// Render the initial scene.
@@ -280,8 +280,17 @@ void Raytracing::RaytraceTexture()
 		for (int x = 0; x < viewport_width; ++x)
 		{
 			Ray ray = GetRayFromScreenCoordinates(x, y);
-			glm::vec3 normalized_color = IntersectRayVsScene(ray);
-			texture_data[y * viewport_width + x] = glm::u8vec3(normalized_color.r * 255, normalized_color.g * 255, normalized_color.b * 255);
+			HitResult result = IntersectRayVsScene(ray);
+
+			float shadow_factor = 1.0f;
+			//HitResult shadow_result = IntersectRayVsScene(Ray(result.position + result.normal * 0.01f, glm::normalize(light.position - result.position)));
+			//if (shadow_result.hit)
+			//	shadow_factor = 0.5f;
+
+			float coefficient = glm::max(0.0f, glm::dot(result.normal, glm::normalize(light.position - result.position)));
+			glm::vec3 color = result.surface_color * shadow_factor * coefficient * light.intensity;
+
+			texture_data[y * viewport_width + x] = glm::u8vec3(color.r * 255, color.g * 255, color.b * 255);
 		}
 	}
 
@@ -321,18 +330,22 @@ Ray Raytracing::GetRayFromScreenCoordinates(int screen_x, int screen_y) const
 	return ray;
 }
 
-glm::vec3 Raytracing::IntersectRayVsScene(const Ray& ray) const
+HitResult Raytracing::IntersectRayVsScene(const Ray& ray) const
 {
-	glm::vec3 color = glm::u8vec3(0, 0, 0);
+	HitResult result;
 	float t = 100000.0f;
 
+	result.hit = false;
 	for (int k = 0; k < SPHERE_COUNT; ++k)
 	{
 		Ray::Intersection i = ray.intersect(spheres[k].geometry);
 		if (i.intersected && i.t < t)
 		{
 			t = i.t;
-			color = spheres[k].color;
+			result.hit = true;
+			result.surface_color = spheres[k].color;
+			result.position = ray.origin + ray.direction * t;
+			result.normal = i.normal;
 		}
 	}
 
@@ -342,7 +355,10 @@ glm::vec3 Raytracing::IntersectRayVsScene(const Ray& ray) const
 		if (i.intersected && i.t < t)
 		{
 			t = i.t;
-			color = boxes[k].color;
+			result.hit = true;
+			result.surface_color = boxes[k].color;
+			result.position = ray.origin + ray.direction * t;
+			result.normal = i.normal;
 		}
 	}
 
@@ -352,9 +368,12 @@ glm::vec3 Raytracing::IntersectRayVsScene(const Ray& ray) const
 		if (i.intersected && i.t < t)
 		{
 			t = i.t;
-			color = triangles[k].color;
+			result.hit = true;
+			result.surface_color = triangles[k].color;
+			result.position = ray.origin + ray.direction * t;
+			result.normal = i.normal;
 		}
 	}
 
-	return color;
+	return result;
 }

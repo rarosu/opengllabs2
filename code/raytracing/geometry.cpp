@@ -78,9 +78,10 @@ Ray::Intersection::Intersection()
 
 }
 
-Ray::Intersection::Intersection(bool intersected, float t)
+Ray::Intersection::Intersection(bool intersected, float t, const glm::vec3& normal)
 	: intersected(intersected)
 	, t(t)
+	, normal(normal)
 {
 
 }
@@ -94,13 +95,13 @@ Ray::Intersection Ray::intersect(const Sphere& sphere) const
 
 	// Bail out if the sphere is behind the origin AND the origin is not inside of the sphere.
 	if (dot < 0 && distanceSquared < radiusSquared)
-		return Intersection(false, 0.0f);
+		return Intersection();
 
 	// Calculate the distance from the center of the sphere to the closest point on the ray.
 	// Bail out if this distance is larger than the radius of the sphere.
 	float shortestDistanceSquared = distanceSquared - dot * dot;
 	if (shortestDistanceSquared > radiusSquared)
-		return Intersection(false, 0.0f);
+		return Intersection();
 
 	// We have intersection, calculate the intersection point.
 	float t = 0.0f;
@@ -110,7 +111,7 @@ Ray::Intersection Ray::intersect(const Sphere& sphere) const
 	else
 		t = dot + q;
 
-	return Intersection(true, t);
+	return Intersection(true, t, glm::normalize(origin + direction * t - sphere.center));
 }
 
 Ray::Intersection Ray::intersect(const OBB& obb) const
@@ -118,32 +119,43 @@ Ray::Intersection Ray::intersect(const OBB& obb) const
 	// Using the Slabs Method to determine intersection point.
 	float tmin = std::numeric_limits<float>::min();	// The minimum value
 	float tmax = std::numeric_limits<float>::max();	// The maximum value
+	glm::vec3 normal;
 
 	glm::vec3 displacement = obb.center - origin;
-	for (int i = 0; i < 3; ++i) {
+	for (int i = 0; i < 3; ++i) 
+	{
 		float e = glm::dot(obb.side_unit_vectors[i], displacement);
 		float f = glm::dot(obb.side_unit_vectors[i], direction);
 
-		if (std::abs(f) > std::numeric_limits<float>::epsilon()) {
+		if (std::abs(f) > std::numeric_limits<float>::epsilon()) 
+		{
 			float t[2];
 			t[0] = (e + obb.side_half_lengths[i]) / f;
 			t[1] = (e - obb.side_half_lengths[i]) / f;
 			if (t[0] > t[1]) std::swap(t[0], t[1]);
-			if (t[0] > tmin) tmin = t[0];
-			if (t[1] < tmax) tmax = t[1];
+			if (t[0] > tmin)
+			{
+				normal = glm::dot(direction, obb.side_unit_vectors[i]) < 0 ? obb.side_unit_vectors[i] : -obb.side_unit_vectors[i];
+				tmin = t[0];
+			}
+			if (t[1] < tmax)
+			{
+				tmax = t[1];
+			}
 
-			if (tmin > tmax) return Intersection(false, 0.0f);
-			if (tmax < 0) return Intersection(false, 0.0f);
+			if (tmin > tmax) return Intersection();
+			if (tmax < 0) return Intersection();
 		}
-		else if ((-e - obb.side_half_lengths[i] > 0) || (-e + obb.side_half_lengths[i] < 0)) {
-			return Intersection(false, 0.0f);
+		else if ((-e - obb.side_half_lengths[i] > 0) || (-e + obb.side_half_lengths[i] < 0)) 
+		{
+			return Intersection();
 		}
 	}
 
 	if (tmin > 0)
-		return Intersection(true, tmin);
+		return Intersection(true, tmin, normal);
 	else
-		return Intersection(true, tmax);
+		return Intersection(true, tmax, -normal);
 }
 
 Ray::Intersection Ray::intersect(const Triangle& triangle) const
@@ -153,14 +165,14 @@ Ray::Intersection Ray::intersect(const Triangle& triangle) const
 	// where d is the direction of the ray, o is the origin and p0 through p2 are
 	// the triangle vertices.
 
-	glm::vec3 e1 = triangle.vertices[1] - triangle.vertices[0];;
-	glm::vec3 e2 = triangle.vertices[2] - triangle.vertices[0];;
+	glm::vec3 e1 = triangle.vertices[1] - triangle.vertices[0];
+	glm::vec3 e2 = triangle.vertices[2] - triangle.vertices[0];
 	glm::vec3 q = glm::cross(direction, e2);
 	float a = glm::dot(e1, q);
 
 	// See if the system is invertible
 	if (std::abs(a) < std::numeric_limits<float>::epsilon())
-		return Intersection(false, 0.0f);
+		return Intersection();
 
 	float f = 1.0f / a;
 
@@ -169,16 +181,17 @@ Ray::Intersection Ray::intersect(const Triangle& triangle) const
 
 	// Make sure the barycentric coordinates are valid
 	if (u < 0.0f)
-		return Intersection(false, 0.0f);
+		return Intersection();
 
 	glm::vec3 r = glm::cross(s, e1);
 	float v = f * glm::dot(direction, r);
 
 	// Make sure the barycentric coordinates are valid
 	if (v < 0.0f || u + v > 1.0f)
-		return Intersection(false, 0.0f);
+		return Intersection();
 
 	// Return the intersection.
 	float t = f * glm::dot(e2, r);
-	return Intersection(true, t);
+	glm::vec3 normal = glm::normalize(glm::cross(e1, e2));
+	return Intersection(true, t, glm::dot(direction, normal) < 0.0f ? normal : -normal);
 }

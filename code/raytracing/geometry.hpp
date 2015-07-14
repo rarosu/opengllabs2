@@ -41,9 +41,10 @@ struct Ray
 	{
 		bool intersected;
 		float t;
+		glm::vec3 normal;
 
 		Intersection();
-		Intersection(bool intersected, float t);
+		Intersection(bool intersected, float t, const glm::vec3& normal);
 	};
 
 	Intersection intersect(const Sphere& sphere) const;

@@ -45,8 +45,16 @@ struct Entity
 struct PointLight
 {
 	glm::vec3 position;
-	glm::vec3 color;
+	glm::vec3 intensity;
 	float cutoff;
+};
+
+struct HitResult
+{
+	bool hit;
+	glm::vec3 surface_color;
+	glm::vec3 position;
+	glm::vec3 normal;
 };
 
 class Raytracing
@@ -82,5 +90,5 @@ private:
 	void RenderScene();
 	void RaytraceTexture();
 	Ray GetRayFromScreenCoordinates(int screen_x, int screen_y) const;
-	glm::vec3 IntersectRayVsScene(const Ray& ray) const;
+	HitResult IntersectRayVsScene(const Ray& ray) const;
 };
